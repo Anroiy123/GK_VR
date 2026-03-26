@@ -6,6 +6,7 @@ export class WebXRSetup {
     this.isPresenting = false;
     this.onSessionStart = null;
     this.onSessionEnd = null;
+    this.spawnDistance = 6;
   }
 
   init() {
@@ -16,6 +17,7 @@ export class WebXRSetup {
     document.body.appendChild(vrButton);
 
     this.renderer.xr.addEventListener('sessionstart', () => {
+      this.applySpawnOffset();
       this.isPresenting = true;
       document.body.classList.add('vr-active');
       this.onSessionStart?.();
@@ -26,5 +28,18 @@ export class WebXRSetup {
       document.body.classList.remove('vr-active');
       this.onSessionEnd?.();
     });
+  }
+
+  applySpawnOffset() {
+    const baseReferenceSpace = this.renderer.xr.getReferenceSpace();
+
+    if (!baseReferenceSpace) {
+      return;
+    }
+
+    // Move viewer away from origin so Earth stays in front instead of at the headset position.
+    const offset = new XRRigidTransform({ x: 0, y: 0, z: -this.spawnDistance });
+    const shiftedReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(offset);
+    this.renderer.xr.setReferenceSpace(shiftedReferenceSpace);
   }
 }
