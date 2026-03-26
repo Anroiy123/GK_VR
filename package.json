@@ -4,9 +4,9 @@
   "description": "VR Earth Simulation - Midterm VR Project",
   "type": "module",
   "scripts": {
-    "dev": "node -e \"const path=require('node:path'); const pkg=(process.env.npm_package_json||'').replace(/^\\\\\\\\\\?\\\\/, ''); require(path.join(path.dirname(pkg),'scripts','run-vite.cjs'))\"",
-    "build": "node -e \"const path=require('node:path'); const pkg=(process.env.npm_package_json||'').replace(/^\\\\\\\\\\?\\\\/, ''); require(path.join(path.dirname(pkg),'scripts','run-vite.cjs'))\"",
-    "preview": "node -e \"const path=require('node:path'); const pkg=(process.env.npm_package_json||'').replace(/^\\\\\\\\\\?\\\\/, ''); require(path.join(path.dirname(pkg),'scripts','run-vite.cjs'))\""
+    "dev": "node scripts/run-vite.cjs",
+    "build": "node scripts/run-vite.cjs",
+    "preview": "node scripts/run-vite.cjs"
   },
   "dependencies": {
     "three": "^0.183.2"
