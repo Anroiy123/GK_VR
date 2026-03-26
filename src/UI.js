@@ -147,6 +147,32 @@ export class UI {
     }
   }
 
+  adjustSpeed(delta) {
+    if (!this.speedSlider || !this.speedValueEl) {
+      return;
+    }
+
+    const min = parseFloat(this.speedSlider.min);
+    const max = parseFloat(this.speedSlider.max);
+    const next = Math.min(max, Math.max(min, this.speedMultiplier + delta));
+    this.speedMultiplier = next;
+    this.speedSlider.value = next.toFixed(1);
+    this.speedValueEl.textContent = `${next.toFixed(1)}x`;
+  }
+
+  adjustSunlight(delta) {
+    if (!this.sunlightSlider || !this.sunlightValueEl) {
+      return;
+    }
+
+    const min = parseFloat(this.sunlightSlider.min);
+    const max = parseFloat(this.sunlightSlider.max);
+    const next = Math.min(max, Math.max(min, this.sunlightMultiplier + delta));
+    this.sunlightMultiplier = next;
+    this.sunlightSlider.value = next.toFixed(1);
+    this.sunlightValueEl.textContent = `${next.toFixed(1)}x`;
+  }
+
   setControlsCollapsed(isCollapsed) {
     this.controlsCollapsed = isCollapsed;
     this.controlsPanel?.classList.toggle('collapsed', isCollapsed);
@@ -178,7 +204,12 @@ export class UI {
         image.referrerPolicy = 'no-referrer';
         image.className = 'location-popup-image';
         image.addEventListener('error', () => {
-          card.remove();
+          if (image.dataset.fallbackApplied === 'true') {
+            return;
+          }
+
+          image.dataset.fallbackApplied = 'true';
+          image.src = this.createPopupFallbackImage(location.name, index + 1);
         });
 
         card.appendChild(image);
@@ -216,5 +247,24 @@ export class UI {
     const clampedY = Math.min(Math.max(margin, preferredY), window.innerHeight - height - margin);
 
     this.locationPopup.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
+  }
+
+  createPopupFallbackImage(locationName, imageIndex) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+      <defs>
+        <linearGradient id="g" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stop-color="#12233b"/>
+          <stop offset="100%" stop-color="#27486b"/>
+        </linearGradient>
+      </defs>
+      <rect width="640" height="480" fill="url(#g)"/>
+      <circle cx="520" cy="110" r="70" fill="rgba(255,255,255,0.08)"/>
+      <path d="M40 360 L170 220 L260 320 L360 180 L530 360 Z" fill="rgba(255,255,255,0.12)"/>
+      <text x="40" y="92" fill="#ffffff" font-size="42" font-family="Segoe UI, Arial, sans-serif" font-weight="700">${locationName}</text>
+      <text x="40" y="146" fill="rgba(255,255,255,0.72)" font-size="28" font-family="Segoe UI, Arial, sans-serif">Ảnh ${imageIndex}</text>
+      <text x="40" y="420" fill="rgba(255,255,255,0.7)" font-size="24" font-family="Segoe UI, Arial, sans-serif">Ảnh online đang cập nhật</text>
+    </svg>`;
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   }
 }
