@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VR Earth Simulation — Mô phỏng Trái Đất</title>
+    <meta name="description" content="Ứng dụng VR mô phỏng Trái Đất xoay quanh trục trong không gian 3D" />
+    <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>Đang tải mô phỏng...</p>
+    </div>
+
+    <div id="ui-overlay">
+        <div id="info-panel">
+            <h2>🌍 Trái Đất VR</h2>
+            <p id="fps-counter">FPS: --</p>
+            <p id="sim-time">Thời gian: --</p>
+            <p id="vr-status">VR: Chưa kết nối</p>
+        </div>
+
+        <div id="controls-panel">
+            <button id="controls-toggle" aria-expanded="true">◀ Ẩn bảng điều khiển</button>
+            <div id="controls-body">
+                <div id="speed-control" class="control-group">
+                    <label for="speed-slider">Tốc độ quay</label>
+                    <div class="slider-row">
+                        <input type="range" id="speed-slider" min="0" max="5" step="0.1" value="1" />
+                        <span id="speed-value">1.0x</span>
+                    </div>
+                </div>
+                <div id="sunlight-control" class="control-group">
+                    <label for="sunlight-slider">Độ sáng mặt trời</label>
+                    <div class="slider-row">
+                        <input type="range" id="sunlight-slider" min="0.5" max="3" step="0.1" value="1.4" />
+                        <span id="sunlight-value">1.4x</span>
+                    </div>
+                </div>
+                <button id="iss-toggle">🛰️ ISS View</button>
+                <button id="mute-btn">🔇 Âm thanh</button>
+                <button id="markers-toggle">📍 Địa danh</button>
+                <button id="bump-toggle">🗺️ Tắt bump</button>
+                <button id="clouds-toggle">☁️ Tắt mây</button>
+                <button id="atmosphere-toggle">🌫️ Tắt khí quyển</button>
+            </div>
+        </div>
+
+        <div id="help-panel">
+            <p>🖱️ Kéo chuột để xoay | Scroll để zoom</p>
+            <p>🥽 Nhấn "Enter VR" để vào chế độ VR</p>
+        </div>
+
+        <div id="location-popup" hidden>
+            <div class="location-popup-header">
+                <p class="location-popup-kicker">Địa danh nổi bật</p>
+                <h3 id="location-popup-title"></h3>
+                <p id="location-popup-desc"></p>
+            </div>
+            <div id="location-popup-gallery"></div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
