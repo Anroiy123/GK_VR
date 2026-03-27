@@ -24,6 +24,7 @@ export class Interaction {
     this.vrCameraDirection = new THREE.Vector3();
     this.vrCameraRight = new THREE.Vector3();
     this.vrZoomSpeed = 0.08;
+    this.vrTurnSpeed = 0.03;
     this.vrInputDebugEl = null;
     this.lastVRClickTarget = "none";
     this.lastVRInputSummary = "idle";
@@ -395,6 +396,7 @@ export class Interaction {
     const session = this.renderer.xr.getSession();
     if (!session) {
       return {
+        turnX: 0,
         zoomY: 0,
         aPressed: false,
         bPressed: false,
@@ -405,6 +407,7 @@ export class Interaction {
       };
     }
 
+    let turnX = 0;
     let zoomY = 0;
     let aPressed = false;
     let bPressed = false;
@@ -425,6 +428,7 @@ export class Interaction {
 
     if (!activeSource?.gamepad) {
       return {
+        turnX,
         zoomY,
         aPressed,
         bPressed,
@@ -436,7 +440,9 @@ export class Interaction {
     }
 
     const gamepad = activeSource.gamepad;
+    const axisX = gamepad.axes?.[2] ?? gamepad.axes?.[0] ?? 0;
     const axisY = gamepad.axes?.[3] ?? gamepad.axes?.[1] ?? 0;
+    turnX = this.clampAxisValue(axisX);
     zoomY = this.clampAxisValue(axisY);
     sourceHandedness = activeSource.handedness || "none";
     profile = activeSource.profiles?.[0] || "unknown";
@@ -458,6 +464,7 @@ export class Interaction {
     bPressed = this.getButtonPressed(gamepad, bCandidates);
 
     return {
+      turnX,
       zoomY,
       aPressed,
       bPressed,
@@ -497,18 +504,21 @@ export class Interaction {
         }
       }
 
-      const { zoomY } = this.getRightControllerInput();
+      const { turnX, zoomY } = this.getRightControllerInput();
       const deadZone = 0.2;
+      const turnValue = Math.abs(turnX) > deadZone ? turnX : 0;
       const zoomValue = Math.abs(zoomY) > deadZone ? zoomY : 0;
 
-      if (zoomValue === 0) {
+      if (turnValue === 0 && zoomValue === 0) {
         return;
       }
 
+      const yawStep = this.clampAxisValue(-turnValue) * this.vrTurnSpeed;
       const moveStep = this.clampAxisValue(-zoomValue) * this.vrZoomSpeed;
+      const halfYaw = yawStep * 0.5;
       const transform = new XRRigidTransform(
         { x: 0, y: 0, z: moveStep },
-        { x: 0, y: 0, z: 0, w: 1 },
+        { x: 0, y: Math.sin(halfYaw), z: 0, w: Math.cos(halfYaw) },
       );
 
       this.vrReferenceSpace =
@@ -524,8 +534,10 @@ export class Interaction {
 
   updateVRPanelButtons() {
     const {
+      turnX,
       aPressed,
       bPressed,
+      zoomY,
       sourceHandedness,
       profile,
       buttonCount,
@@ -549,7 +561,7 @@ export class Interaction {
     this.vrInputState.aPressed = aPressed;
     this.vrInputState.bPressed = bPressed;
 
-    this.lastVRInputSummary = `hand=${sourceHandedness} profile=${profile} buttons=${buttonCount} pressed=[${pressedButtons.join(",")}] A=${aPressed ? 1 : 0} B=${bPressed ? 1 : 0}`;
+    this.lastVRInputSummary = `hand=${sourceHandedness} profile=${profile} axes=[x=${turnX.toFixed(2)},y=${zoomY.toFixed(2)}] buttons=${buttonCount} pressed=[${pressedButtons.join(",")}] A=${aPressed ? 1 : 0} B=${bPressed ? 1 : 0}`;
   }
 
   updateVRPanelPose() {
