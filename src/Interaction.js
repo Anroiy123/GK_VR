@@ -663,9 +663,18 @@ export class Interaction {
 
       const yawStep = this.clampAxisValue(-turnValue) * this.vrTurnSpeed;
       const moveStep = this.clampAxisValue(-zoomValue) * this.vrZoomSpeed;
+
+      // Zoom theo điểm ngay trước mặt headset thay vì trục Z cố định của reference space.
+      const xrCamera = this.renderer.xr.getCamera(this.camera);
+      xrCamera.getWorldDirection(this.vrCameraDirection);
+      this.vrCameraDirection.normalize();
+
+      const zoomOffsetX = -this.vrCameraDirection.x * moveStep;
+      const zoomOffsetY = -this.vrCameraDirection.y * moveStep;
+      const zoomOffsetZ = -this.vrCameraDirection.z * moveStep;
       const halfYaw = yawStep * 0.5;
       const transform = new XRRigidTransform(
-        { x: 0, y: 0, z: moveStep },
+        { x: zoomOffsetX, y: zoomOffsetY, z: zoomOffsetZ },
         { x: 0, y: Math.sin(halfYaw), z: 0, w: Math.cos(halfYaw) },
       );
 
