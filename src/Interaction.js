@@ -119,7 +119,12 @@ export class Interaction {
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0, 0, -1),
       ]);
-      const line = new THREE.Line(geometry);
+      const laserMaterial = new THREE.LineBasicMaterial({
+        color: 0xff0000, // Đèn laser màu đỏ
+        transparent: true,
+        opacity: 0.7,
+      });
+      const line = new THREE.Line(geometry, laserMaterial);
       line.name = "line";
       line.scale.z = 5;
       controller.add(line);
@@ -203,10 +208,11 @@ export class Interaction {
     ];
 
     buttonConfig.forEach((config) => {
-      const button = this.createVRButton(config.label, config.action);
-      button.position.set(config.x, config.y, 0.01);
-      panel.add(button);
-      this.vrPanelButtons.push(button);
+      const buttonGroup = this.createVRButton(config.label, config.action);
+      buttonGroup.position.set(config.x, config.y, 0.01);
+      panel.add(buttonGroup);
+      // Chỉ đưa hitbox to vào danh sách kiểm tra va chạm
+      this.vrPanelButtons.push(buttonGroup.userData.hitMesh);
     });
 
     this.vrPanel = panel;
@@ -214,6 +220,8 @@ export class Interaction {
   }
 
   createVRButton(label, action) {
+    const parent = new THREE.Group();
+
     const geometry = new THREE.PlaneGeometry(0.24, 0.11);
     const texture = this.createButtonTexture(label);
     const material = new THREE.MeshBasicMaterial({
@@ -222,9 +230,19 @@ export class Interaction {
       depthWrite: false,
     });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.userData.isVRPanelButton = true;
-    mesh.userData.action = action;
-    return mesh;
+    parent.add(mesh);
+
+    // Tạo hitbox tàng hình lớn hơn bình thường để dễ quét laser
+    const hitGeometry = new THREE.PlaneGeometry(0.3, 0.16);
+    const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    const hitMesh = new THREE.Mesh(hitGeometry, hitMaterial);
+    hitMesh.userData.isVRPanelButton = true;
+    hitMesh.userData.action = action;
+    parent.add(hitMesh);
+
+    parent.userData.hitMesh = hitMesh;
+
+    return parent;
   }
 
   createButtonTexture(label) {
@@ -395,7 +413,8 @@ export class Interaction {
       (source) => source?.handedness === "right" && source?.gamepad,
     );
     const fallbackSource = sources.find(
-      (source) => source?.targetRayMode === "tracked-pointer" && source?.gamepad,
+      (source) =>
+        source?.targetRayMode === "tracked-pointer" && source?.gamepad,
     );
     const activeSource = rightSource ?? fallbackSource ?? null;
 
@@ -421,14 +440,15 @@ export class Interaction {
       .map((button, index) => (button?.pressed ? index : -1))
       .filter((index) => index >= 0);
 
-    // Ưu tiên index chuẩn của Quest: A=3, B=4 ở tay phải.
+    // Chuẩn Meta Quest WebXR API: Nút A = 4, Nút B = 5 ở tay phải.
+    // Thêm các fallback 0 (Trigger) phòng trường hợp runtime map sai
     const normalizedProfile = profile.toLowerCase();
     const isQuestProfile =
       normalizedProfile.includes("oculus-touch") ||
       normalizedProfile.includes("meta-quest-touch");
 
-    const aCandidates = isQuestProfile ? [3] : [3, 4, 0];
-    const bCandidates = isQuestProfile ? [4] : [4, 5, 1];
+    const aCandidates = isQuestProfile ? [4, 0] : [4, 3, 0];
+    const bCandidates = isQuestProfile ? [5, 1] : [5, 4, 1];
     aPressed = this.getButtonPressed(gamepad, aCandidates);
     bPressed = this.getButtonPressed(gamepad, bCandidates);
 
