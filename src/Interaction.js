@@ -440,8 +440,18 @@ export class Interaction {
     }
 
     const gamepad = activeSource.gamepad;
-    const axisX = gamepad.axes?.[2] ?? gamepad.axes?.[0] ?? 0;
-    const axisY = gamepad.axes?.[3] ?? gamepad.axes?.[1] ?? 0;
+    const axis0 = this.clampAxisValue(gamepad.axes?.[0] ?? 0);
+    const axis1 = this.clampAxisValue(gamepad.axes?.[1] ?? 0);
+    const axis2 = this.clampAxisValue(gamepad.axes?.[2] ?? 0);
+    const axis3 = this.clampAxisValue(gamepad.axes?.[3] ?? 0);
+
+    // Quest/WebXR có thể đổi cặp trục hoạt động giữa [0,1] và [2,3] tùy runtime.
+    // Chọn cặp đang có biên độ lớn hơn để tránh trộn trục gây quay -> zoom sai.
+    const pair01Magnitude = Math.hypot(axis0, axis1);
+    const pair23Magnitude = Math.hypot(axis2, axis3);
+    const usePrimaryPair = pair01Magnitude >= pair23Magnitude;
+    const axisX = usePrimaryPair ? axis0 : axis2;
+    const axisY = usePrimaryPair ? axis1 : axis3;
     turnX = this.clampAxisValue(axisX);
     zoomY = this.clampAxisValue(axisY);
     sourceHandedness = activeSource.handedness || "none";
@@ -505,9 +515,26 @@ export class Interaction {
       }
 
       const { turnX, zoomY } = this.getRightControllerInput();
-      const deadZone = 0.2;
-      const turnValue = Math.abs(turnX) > deadZone ? turnX : 0;
-      const zoomValue = Math.abs(zoomY) > deadZone ? zoomY : 0;
+      const turnDeadZone = 0.18;
+      const zoomDeadZone = 0.28;
+      let turnValue = Math.abs(turnX) > turnDeadZone ? turnX : 0;
+      let zoomValue = Math.abs(zoomY) > zoomDeadZone ? zoomY : 0;
+
+      // Nếu người dùng gạt chéo, chỉ giữ trục chiếm ưu thế.
+      // Trường hợp biên độ tương đương, ưu tiên quay để tránh zoom ngoài ý muốn.
+      const turnAbs = Math.abs(turnValue);
+      const zoomAbs = Math.abs(zoomValue);
+      const dominanceThreshold = 0.12;
+
+      if (turnAbs > 0 && zoomAbs > 0) {
+        if (turnAbs > zoomAbs + dominanceThreshold) {
+          zoomValue = 0;
+        } else if (zoomAbs > turnAbs + dominanceThreshold) {
+          turnValue = 0;
+        } else {
+          zoomValue = 0;
+        }
+      }
 
       if (turnValue === 0 && zoomValue === 0) {
         return;
