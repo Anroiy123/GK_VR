@@ -14,19 +14,19 @@ const SUN_VISUALS = {
   glow: {
     innerScale: 6.8,
     coronaScale: 9.6,
-    raysScale: 11.4,
-    haloScale: 16.2,
-    outerScale: 19.2,
+    raysScale: 12.6,
+    haloScale: 17.8,
+    outerScale: 22.0,
     innerOpacityBase: 0.88,
     coronaOpacityBase: 0.58,
-    raysOpacityBase: 0.36,
-    haloOpacityBase: 0.18,
-    outerOpacityBase: 0.08,
+    raysOpacityBase: 0.5,
+    haloOpacityBase: 0.34,
+    outerOpacityBase: 0.17,
     innerOpacityBoost: 0.22,
     coronaOpacityBoost: 0.22,
-    raysOpacityBoost: 0.18,
-    haloOpacityBoost: 0.2,
-    outerOpacityBoost: 0.12,
+    raysOpacityBoost: 0.24,
+    haloOpacityBoost: 0.36,
+    outerOpacityBoost: 0.24,
     raysScaleBoost: 0.055,
     haloScaleBoost: 0.04,
     outerScaleBoost: 0.06,
@@ -131,23 +131,23 @@ function createInnerGlowTexture() {
 
 function createHaloTexture() {
   return createRadialGlowTexture([
-    [0, "rgba(255, 250, 236, 0)"],
-    [0.18, "rgba(255, 246, 228, 0.06)"],
-    [0.36, "rgba(255, 236, 204, 0.12)"],
-    [0.58, "rgba(255, 220, 176, 0.1)"],
-    [0.82, "rgba(255, 198, 146, 0.04)"],
-    [1, "rgba(255, 176, 124, 0)"],
+    [0, "rgba(255, 248, 220, 0)"],
+    [0.14, "rgba(255, 240, 198, 0.03)"],
+    [0.28, "rgba(255, 226, 154, 0.18)"],
+    [0.44, "rgba(255, 206, 122, 0.42)"],
+    [0.62, "rgba(255, 178, 78, 0.12)"],
+    [1, "rgba(255, 136, 38, 0)"],
   ]);
 }
 
 function createOuterGlowTexture() {
   return createRadialGlowTexture([
-    [0, "rgba(255, 242, 214, 0)"],
-    [0.24, "rgba(255, 230, 188, 0.015)"],
-    [0.46, "rgba(255, 214, 162, 0.04)"],
-    [0.68, "rgba(255, 196, 142, 0.032)"],
-    [0.9, "rgba(255, 178, 128, 0.012)"],
-    [1, "rgba(255, 162, 116, 0)"],
+    [0, "rgba(255, 240, 206, 0)"],
+    [0.2, "rgba(255, 224, 154, 0.02)"],
+    [0.34, "rgba(255, 194, 108, 0.08)"],
+    [0.5, "rgba(255, 166, 66, 0.12)"],
+    [0.68, "rgba(255, 128, 32, 0.04)"],
+    [1, "rgba(255, 110, 24, 0)"],
   ]);
 }
 
@@ -303,7 +303,7 @@ export class Sun {
 
     this.rays = createGlowSprite(
       raysTexture,
-      0xffeed2,
+      0xffde80,
       getGlowOpacity(
         SUN_VISUALS.glow.raysOpacityBase,
         SUN_VISUALS.glow.raysOpacityBoost,
@@ -320,7 +320,7 @@ export class Sun {
 
     this.halo = createGlowSprite(
       haloTexture,
-      0xfff5dc,
+      0xfff0a6,
       getGlowOpacity(
         SUN_VISUALS.glow.haloOpacityBase,
         SUN_VISUALS.glow.haloOpacityBoost,
@@ -337,7 +337,7 @@ export class Sun {
 
     this.outerGlow = createGlowSprite(
       outerGlowTexture,
-      0xffeccf,
+      0xffcd72,
       getGlowOpacity(
         SUN_VISUALS.glow.outerOpacityBase,
         SUN_VISUALS.glow.outerOpacityBoost,

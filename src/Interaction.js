@@ -36,6 +36,11 @@ export class Interaction {
       aPressed: false,
       bPressed: false,
     };
+    this.vrButtonMap = {
+      profileKey: "none",
+      aIndex: 4,
+      bIndex: 5,
+    };
 
     this.renderer.domElement.addEventListener(
       "pointerdown",
@@ -182,6 +187,111 @@ export class Interaction {
     return false;
   }
 
+  getFirstPressedButtonIndex(gamepad, indices) {
+    for (const index of indices) {
+      const button = gamepad.buttons?.[index];
+      if (button?.pressed || (button?.value ?? 0) > 0.5) {
+        return index;
+      }
+    }
+
+    return -1;
+  }
+
+  getDefaultABButtonMapping(profile, handedness, buttonCount) {
+    const normalizedProfile = profile.toLowerCase();
+    const isQuestProfile =
+      normalizedProfile.includes("oculus-touch") ||
+      normalizedProfile.includes("meta-quest-touch") ||
+      normalizedProfile.includes("touch-plus");
+    const isRightHand = handedness === "right";
+
+    // Ưu tiên map nút face button theo runtime phổ biến của Quest 3.
+    if (isQuestProfile && isRightHand) {
+      if (buttonCount >= 6) {
+        return {
+          aIndex: 4,
+          bIndex: 5,
+          aFallback: [3],
+          bFallback: [4, 1],
+        };
+      }
+
+      if (buttonCount >= 5) {
+        return {
+          aIndex: 3,
+          bIndex: 4,
+          aFallback: [4],
+          bFallback: [5, 1],
+        };
+      }
+    }
+
+    // Tránh dùng trigger (index 0) làm A fallback vì dễ nhầm thao tác bấm cò.
+    return {
+      aIndex: 3,
+      bIndex: 4,
+      aFallback: [4],
+      bFallback: [5, 1],
+    };
+  }
+
+  resolveABButtons(gamepad, profile, handedness) {
+    const buttonCount = gamepad.buttons?.length ?? 0;
+    const mapping = this.getDefaultABButtonMapping(
+      profile,
+      handedness,
+      buttonCount,
+    );
+    const profileKey = `${profile.toLowerCase()}|${handedness}|${buttonCount}`;
+
+    if (this.vrButtonMap.profileKey !== profileKey) {
+      this.vrButtonMap.profileKey = profileKey;
+      this.vrButtonMap.aIndex = mapping.aIndex;
+      this.vrButtonMap.bIndex = mapping.bIndex;
+    }
+
+    const currentA = this.vrButtonMap.aIndex;
+    const currentB = this.vrButtonMap.bIndex;
+
+    let aPressed = this.getButtonPressed(gamepad, [currentA]);
+    let bPressed = this.getButtonPressed(gamepad, [currentB]);
+
+    if (!aPressed) {
+      const fallbackA = this.getFirstPressedButtonIndex(
+        gamepad,
+        mapping.aFallback.filter((index) => index !== this.vrButtonMap.bIndex),
+      );
+
+      if (fallbackA >= 0) {
+        this.vrButtonMap.aIndex = fallbackA;
+        aPressed = true;
+      }
+    }
+
+    if (!bPressed) {
+      const fallbackB = this.getFirstPressedButtonIndex(
+        gamepad,
+        mapping.bFallback.filter((index) => index !== this.vrButtonMap.aIndex),
+      );
+
+      if (fallbackB >= 0) {
+        this.vrButtonMap.bIndex = fallbackB;
+        bPressed = true;
+      }
+    }
+
+    if (this.vrButtonMap.aIndex === this.vrButtonMap.bIndex) {
+      bPressed = false;
+    }
+
+    return {
+      aPressed,
+      bPressed,
+      mappingLabel: `A=${this.vrButtonMap.aIndex} B=${this.vrButtonMap.bIndex}`,
+    };
+  }
+
   setupVRControlPanel() {
     const panel = new THREE.Group();
     panel.visible = false;
@@ -293,6 +403,9 @@ export class Interaction {
       this.lastVRRayHit = "none";
       this.lastVRClickTime = 0;
       this.lastVRClickSource = "none";
+      this.vrButtonMap.profileKey = "none";
+      this.vrButtonMap.aIndex = 4;
+      this.vrButtonMap.bIndex = 5;
     }
 
     this.clearSelection();
@@ -404,6 +517,7 @@ export class Interaction {
         profile: "none",
         buttonCount: 0,
         pressedButtons: [],
+        mappingLabel: "A=- B=-",
       };
     }
 
@@ -415,7 +529,10 @@ export class Interaction {
     let profile = "unknown";
     let buttonCount = 0;
     let pressedButtons = [];
+    let mappingLabel = "A=- B=-";
     const sources = Array.from(session.inputSources || []);
+    const rightController = this.getRightVRController();
+    const sourceFromController = rightController?.userData?.xrInputSource;
 
     const rightSource = sources.find(
       (source) => source?.handedness === "right" && source?.gamepad,
@@ -424,7 +541,9 @@ export class Interaction {
       (source) =>
         source?.targetRayMode === "tracked-pointer" && source?.gamepad,
     );
-    const activeSource = rightSource ?? fallbackSource ?? null;
+    const activeSource = sourceFromController?.gamepad
+      ? sourceFromController
+      : (rightSource ?? fallbackSource ?? null);
 
     if (!activeSource?.gamepad) {
       return {
@@ -436,6 +555,7 @@ export class Interaction {
         profile,
         buttonCount,
         pressedButtons,
+        mappingLabel,
       };
     }
 
@@ -454,24 +574,24 @@ export class Interaction {
     const axisY = usePrimaryPair ? axis1 : axis3;
     turnX = this.clampAxisValue(axisX);
     zoomY = this.clampAxisValue(axisY);
-    sourceHandedness = activeSource.handedness || "none";
+    sourceHandedness =
+      activeSource.handedness ||
+      rightController?.userData?.xrHandedness ||
+      "none";
     profile = activeSource.profiles?.[0] || "unknown";
     buttonCount = gamepad.buttons?.length ?? 0;
     pressedButtons = (gamepad.buttons || [])
       .map((button, index) => (button?.pressed ? index : -1))
       .filter((index) => index >= 0);
 
-    // Quest runtimes có thể trả mapping hơi khác nhau giữa browser/runtime.
-    // Ưu tiên A/B chuẩn, thêm fallback A để đồng nhất hành vi click như chuột.
-    const normalizedProfile = profile.toLowerCase();
-    const isQuestProfile =
-      normalizedProfile.includes("oculus-touch") ||
-      normalizedProfile.includes("meta-quest-touch");
-
-    const aCandidates = isQuestProfile ? [4, 3, 0] : [4, 3, 0];
-    const bCandidates = isQuestProfile ? [5, 1] : [5, 4, 1];
-    aPressed = this.getButtonPressed(gamepad, aCandidates);
-    bPressed = this.getButtonPressed(gamepad, bCandidates);
+    const resolvedAB = this.resolveABButtons(
+      gamepad,
+      profile,
+      sourceHandedness,
+    );
+    aPressed = resolvedAB.aPressed;
+    bPressed = resolvedAB.bPressed;
+    mappingLabel = resolvedAB.mappingLabel;
 
     return {
       turnX,
@@ -482,6 +602,7 @@ export class Interaction {
       profile,
       buttonCount,
       pressedButtons,
+      mappingLabel,
     };
   }
 
@@ -569,6 +690,7 @@ export class Interaction {
       profile,
       buttonCount,
       pressedButtons,
+      mappingLabel,
     } = this.getRightControllerInput();
     const justPressedA = aPressed && !this.vrInputState.aPressed;
     const justPressedB = bPressed && !this.vrInputState.bPressed;
@@ -588,7 +710,7 @@ export class Interaction {
     this.vrInputState.aPressed = aPressed;
     this.vrInputState.bPressed = bPressed;
 
-    this.lastVRInputSummary = `hand=${sourceHandedness} profile=${profile} axes=[x=${turnX.toFixed(2)},y=${zoomY.toFixed(2)}] buttons=${buttonCount} pressed=[${pressedButtons.join(",")}] A=${aPressed ? 1 : 0} B=${bPressed ? 1 : 0}`;
+    this.lastVRInputSummary = `hand=${sourceHandedness} profile=${profile} map=${mappingLabel} axes=[x=${turnX.toFixed(2)},y=${zoomY.toFixed(2)}] buttons=${buttonCount} pressed=[${pressedButtons.join(",")}] A=${aPressed ? 1 : 0} B=${bPressed ? 1 : 0}`;
   }
 
   updateVRPanelPose() {
@@ -728,9 +850,16 @@ export class Interaction {
         if (line && line.material) {
           if (this.vrInputState.aPressed) {
             line.material.color.setHex(0x0000ff); // BLUE
-          } else if (this.lastVRRayHit.startsWith("marker:") && !this.lastVRRayHit.includes("none") && !this.lastVRRayHit.includes("filtered")) {
+          } else if (
+            this.lastVRRayHit.startsWith("marker:") &&
+            !this.lastVRRayHit.includes("none") &&
+            !this.lastVRRayHit.includes("filtered")
+          ) {
             line.material.color.setHex(0x00ff00); // GREEN
-          } else if (this.lastVRRayHit.startsWith("panel:") && !this.lastVRRayHit.includes("none")) {
+          } else if (
+            this.lastVRRayHit.startsWith("panel:") &&
+            !this.lastVRRayHit.includes("none")
+          ) {
             line.material.color.setHex(0xffff00); // YELLOW
           } else {
             line.material.color.setHex(0xff0000); // RED

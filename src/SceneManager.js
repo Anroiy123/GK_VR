@@ -1,19 +1,19 @@
-import * as THREE from 'three';
-import { Timer } from 'three';
-import { Earth } from './Earth.js';
-import { Clouds } from './Clouds.js';
-import { Starfield } from './Starfield.js';
-import { Controls } from './Controls.js';
-import { WebXRSetup } from './WebXRSetup.js';
-import { UI } from './UI.js';
-import { Markers } from './Markers.js';
-import { Interaction } from './Interaction.js';
-import { Satellite } from './Satellite.js';
-import { AudioManager } from './AudioManager.js';
-import { CelestialCalculator } from './CelestialCalculator.js';
-import { Sun } from './Sun.js';
-import { Moon } from './Moon.js';
-import { Atmosphere } from './Atmosphere.js';
+import * as THREE from "three";
+import { Timer } from "three";
+import { Earth } from "./Earth.js";
+import { Clouds } from "./Clouds.js";
+import { Starfield } from "./Starfield.js";
+import { Controls } from "./Controls.js";
+import { WebXRSetup } from "./WebXRSetup.js";
+import { UI } from "./UI.js";
+import { Markers } from "./Markers.js";
+import { Interaction } from "./Interaction.js";
+import { Satellite } from "./Satellite.js";
+import { AudioManager } from "./AudioManager.js";
+import { CelestialCalculator } from "./CelestialCalculator.js";
+import { Sun } from "./Sun.js";
+import { Moon } from "./Moon.js";
+import { Atmosphere } from "./Atmosphere.js";
 
 export class SceneManager {
   constructor(canvas) {
@@ -26,7 +26,7 @@ export class SceneManager {
       60,
       window.innerWidth / window.innerHeight,
       0.1,
-      200
+      200,
     );
     this.camera.position.set(0, 1, 6);
 
@@ -51,19 +51,25 @@ export class SceneManager {
     this.simDate = new Date(); // Thời gian mô phỏng
     this.markers = new Markers(2); // radius = 2
     this.satellite = new Satellite();
-    
-    this.interaction = new Interaction(this.camera, this.scene, this.renderer, this.markers, this.ui);
+
+    this.interaction = new Interaction(
+      this.camera,
+      this.scene,
+      this.renderer,
+      this.markers,
+      this.ui,
+    );
     this.controls = new Controls(this.camera, this.renderer.domElement);
 
     this.webxr = new WebXRSetup(this.renderer);
-    
+
     // UI events
     this.ui.onISSToggle = () => {
       const isTracking = !this.controls.isTracking;
       this.controls.setTracking(isTracking ? this.satellite.group : null);
       this.ui.setISSToggleText(isTracking);
     };
-    
+
     this.ui.onMuteToggle = () => {
       if (this.audioManager) {
         const isAudible = this.audioManager.toggleMute();
@@ -107,7 +113,7 @@ export class SceneManager {
       this.interaction.clearSelection();
     };
 
-    window.addEventListener('resize', this.onResize.bind(this));
+    window.addEventListener("resize", this.onResize.bind(this));
   }
 
   async init() {
@@ -120,13 +126,14 @@ export class SceneManager {
 
     this.setupLighting();
 
-    const [earthMesh, cloudMesh, moonGroup, stars, sunGroup] = await Promise.all([
-      this.earth.load(textureLoader, textureQuality),
-      this.clouds.load(textureLoader, textureQuality.maxAnisotropy),
-      this.moon.load(textureLoader),
-      this.starfield.create(textureLoader, textureQuality),
-      this.sun.load(textureLoader, textureQuality),
-    ]);
+    const [earthMesh, cloudMesh, moonGroup, stars, sunGroup] =
+      await Promise.all([
+        this.earth.load(textureLoader, textureQuality),
+        this.clouds.load(textureLoader, textureQuality.maxAnisotropy),
+        this.moon.load(textureLoader),
+        this.starfield.create(textureLoader, textureQuality),
+        this.sun.load(textureLoader, textureQuality),
+      ]);
     const atmosphereMesh = this.atmosphere.create(this.camera);
 
     this.scene.add(earthMesh);
@@ -143,7 +150,7 @@ export class SceneManager {
     earthMesh.add(this.markers.group);
     this.scene.add(this.markers.vrOverlayGroup);
     this.markers.setVRPanelMode(false);
-    
+
     // Thêm satellite vào scene
     this.scene.add(this.satellite.orbitGroup);
 
@@ -157,7 +164,10 @@ export class SceneManager {
   }
 
   setupLighting() {
-    this.sunLight = new THREE.DirectionalLight(0xffffff, this.baseSunLightIntensity);
+    this.sunLight = new THREE.DirectionalLight(
+      0xffffff,
+      this.baseSunLightIntensity,
+    );
     this.scene.add(this.sunLight);
     this.scene.add(this.sunLight.target);
     this.sunLight.target.position.set(0, 0, 0);
@@ -219,7 +229,8 @@ export class SceneManager {
     this.earth.setMoonPosition(moonPos);
     this.earth.setCameraDistance(this.camera.position.length());
     this.earth.setSunBrightness(this.ui.sunlightMultiplier);
-    this.sunLight.intensity = this.baseSunLightIntensity * this.ui.sunlightMultiplier;
+    this.sunLight.intensity =
+      this.baseSunLightIntensity * this.ui.sunlightMultiplier;
     this.clouds.update(delta, speed, this.camera.position.length());
     this.atmosphere.update(this.camera, sunPos);
 
