@@ -171,7 +171,8 @@ export class Interaction {
 
   getButtonPressed(gamepad, indices) {
     for (const index of indices) {
-      if (gamepad.buttons?.[index]?.pressed) {
+      const button = gamepad.buttons?.[index];
+      if (button?.pressed || (button?.value ?? 0) > 0.5) {
         return true;
       }
     }
@@ -440,14 +441,14 @@ export class Interaction {
       .map((button, index) => (button?.pressed ? index : -1))
       .filter((index) => index >= 0);
 
-    // Chuẩn Meta Quest WebXR API: Nút A = 4, Nút B = 5 ở tay phải.
-    // Thêm các fallback 0 (Trigger) phòng trường hợp runtime map sai
+    // Quest runtimes có thể trả mapping hơi khác nhau giữa browser/runtime.
+    // Ưu tiên A/B chuẩn, thêm fallback A để đồng nhất hành vi click như chuột.
     const normalizedProfile = profile.toLowerCase();
     const isQuestProfile =
       normalizedProfile.includes("oculus-touch") ||
       normalizedProfile.includes("meta-quest-touch");
 
-    const aCandidates = isQuestProfile ? [4, 0] : [4, 3, 0];
+    const aCandidates = isQuestProfile ? [4, 3, 0] : [4, 3, 0];
     const bCandidates = isQuestProfile ? [5, 1] : [5, 4, 1];
     aPressed = this.getButtonPressed(gamepad, aCandidates);
     bPressed = this.getButtonPressed(gamepad, bCandidates);
@@ -469,12 +470,17 @@ export class Interaction {
       return false;
     }
 
+    activeController.updateMatrixWorld(true);
+
     const tempMatrix = new THREE.Matrix4();
     tempMatrix.identity().extractRotation(activeController.matrixWorld);
     this.raycaster.ray.origin.setFromMatrixPosition(
       activeController.matrixWorld,
     );
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    this.raycaster.ray.direction
+      .set(0, 0, -1)
+      .applyMatrix4(tempMatrix)
+      .normalize();
     return true;
   }
 
@@ -554,18 +560,17 @@ export class Interaction {
       .crossVectors(this.vrCameraDirection, new THREE.Vector3(0, 1, 0))
       .normalize();
 
-    // Dời bảng sang góc dưới-trái (hoặc phải) và nới khoảng cách để không che Trái Đất
+    // Đưa bảng điều khiển về giữa để dễ bấm như yêu cầu.
     this.vrPanelAnchor
       .copy(this.vrCameraPosition)
-      .addScaledVector(this.vrCameraDirection, 1.2) // Cách mắt 1.2m
-      .addScaledVector(this.vrCameraRight, -0.6)    // Lệch sang Trái 0.6m
-      .addScaledVector(new THREE.Vector3(0, 1, 0), -0.4); // Hạ thấp xuống 0.4m
+      .addScaledVector(this.vrCameraDirection, 1.05)
+      .addScaledVector(this.vrCameraRight, 0)
+      .addScaledVector(new THREE.Vector3(0, 1, 0), -0.16);
 
     this.vrPanel.position.copy(this.vrPanelAnchor);
     this.vrPanel.quaternion.copy(xrCamera.quaternion);
 
-    // Kích thước nhỏ lại một chút để không gây cảm giác vướng víu
-    this.vrPanel.scale.set(0.7, 0.7, 0.7);
+    this.vrPanel.scale.set(0.88, 0.88, 0.88);
   }
 
   handleMarkerSelection() {
