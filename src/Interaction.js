@@ -27,6 +27,9 @@ export class Interaction {
     this.vrInputDebugEl = null;
     this.lastVRClickTarget = "none";
     this.lastVRInputSummary = "idle";
+    this.lastVRUpdateError = "none";
+    this.lastVRClickTime = 0;
+    this.lastVRClickSource = "none";
     this.vrInputState = {
       aPressed: false,
       bPressed: false,
@@ -76,6 +79,14 @@ export class Interaction {
 
     this.vrInputDebugEl.style.display = "block";
     this.vrInputDebugEl.textContent = lines.join("\n");
+  }
+
+  clampAxisValue(value) {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+
+    return Math.min(1, Math.max(-1, value));
   }
 
   setupVRControllers() {
@@ -257,6 +268,9 @@ export class Interaction {
       this.vrInputState.bPressed = false;
       this.lastVRClickTarget = "none";
       this.lastVRInputSummary = "idle";
+      this.lastVRUpdateError = "none";
+      this.lastVRClickTime = 0;
+      this.lastVRClickSource = "none";
     }
 
     this.clearSelection();
@@ -291,22 +305,38 @@ export class Interaction {
       return;
     }
 
-    this.handleUnifiedVRClick();
+    this.handleUnifiedVRClick("selectstart");
   }
 
-  handleUnifiedVRClick() {
+  handleUnifiedVRClick(source = "unknown") {
+    const now = performance.now();
+    const isDuplicateAAfterSelect =
+      source === "button-a" &&
+      this.lastVRClickSource === "selectstart" &&
+      now - this.lastVRClickTime < 120;
+
+    if (isDuplicateAAfterSelect) {
+      return false;
+    }
+
     if (!this.refreshVRPanelRayFromRightController()) {
       this.lastVRClickTarget = "no-controller";
+      this.lastVRClickTime = now;
+      this.lastVRClickSource = source;
       return false;
     }
 
     if (this.handleVRPanelSelection()) {
       this.lastVRClickTarget = "panel";
+      this.lastVRClickTime = now;
+      this.lastVRClickSource = source;
       return true;
     }
 
     this.handleMarkerSelection();
     this.lastVRClickTarget = this.selectedMarker ? "marker" : "none";
+    this.lastVRClickTime = now;
+    this.lastVRClickSource = source;
     return this.selectedMarker !== null;
   }
 
@@ -383,7 +413,7 @@ export class Interaction {
 
     const gamepad = activeSource.gamepad;
     const axisY = gamepad.axes?.[3] ?? gamepad.axes?.[1] ?? 0;
-    zoomY = axisY;
+    zoomY = this.clampAxisValue(axisY);
     sourceHandedness = activeSource.handedness || "none";
     profile = activeSource.profiles?.[0] || "unknown";
     buttonCount = gamepad.buttons?.length ?? 0;
@@ -391,9 +421,14 @@ export class Interaction {
       .map((button, index) => (button?.pressed ? index : -1))
       .filter((index) => index >= 0);
 
-    // Ưu tiên index chuẩn của Quest cho A/B, có fallback cho runtime khác.
-    const aCandidates = buttonCount > 4 ? [4, 3] : [0, 3];
-    const bCandidates = buttonCount > 5 ? [5] : [1, 2];
+    // Ưu tiên index chuẩn của Quest: A=3, B=4 ở tay phải.
+    const normalizedProfile = profile.toLowerCase();
+    const isQuestProfile =
+      normalizedProfile.includes("oculus-touch") ||
+      normalizedProfile.includes("meta-quest-touch");
+
+    const aCandidates = isQuestProfile ? [3] : [3, 4, 0];
+    const bCandidates = isQuestProfile ? [4] : [4, 5, 1];
     aPressed = this.getButtonPressed(gamepad, aCandidates);
     bPressed = this.getButtonPressed(gamepad, bCandidates);
 
@@ -424,30 +459,37 @@ export class Interaction {
   }
 
   updateVRNavigation() {
-    if (!this.vrReferenceSpace) {
-      this.vrReferenceSpace = this.renderer.xr.getReferenceSpace();
+    try {
       if (!this.vrReferenceSpace) {
+        this.vrReferenceSpace = this.renderer.xr.getReferenceSpace();
+        if (!this.vrReferenceSpace) {
+          return;
+        }
+      }
+
+      const { zoomY } = this.getRightControllerInput();
+      const deadZone = 0.2;
+      const zoomValue = Math.abs(zoomY) > deadZone ? zoomY : 0;
+
+      if (zoomValue === 0) {
         return;
       }
+
+      const moveStep = this.clampAxisValue(-zoomValue) * this.vrZoomSpeed;
+      const transform = new XRRigidTransform(
+        { x: 0, y: 0, z: moveStep },
+        { x: 0, y: 0, z: 0, w: 1 },
+      );
+
+      this.vrReferenceSpace =
+        this.vrReferenceSpace.getOffsetReferenceSpace(transform);
+      this.renderer.xr.setReferenceSpace(this.vrReferenceSpace);
+      this.lastVRUpdateError = "none";
+    } catch (error) {
+      this.lastVRUpdateError =
+        error instanceof Error ? error.message : String(error);
+      this.vrReferenceSpace = this.renderer.xr.getReferenceSpace() ?? null;
     }
-
-    const { zoomY } = this.getRightControllerInput();
-    const deadZone = 0.2;
-    const zoomValue = Math.abs(zoomY) > deadZone ? zoomY : 0;
-
-    if (zoomValue === 0) {
-      return;
-    }
-
-    const moveStep = -zoomValue * this.vrZoomSpeed;
-    const transform = new XRRigidTransform(
-      { x: 0, y: 0, z: moveStep },
-      { x: 0, y: 0, z: 0, w: 1 },
-    );
-
-    this.vrReferenceSpace =
-      this.vrReferenceSpace.getOffsetReferenceSpace(transform);
-    this.renderer.xr.setReferenceSpace(this.vrReferenceSpace);
   }
 
   updateVRPanelButtons() {
@@ -463,7 +505,7 @@ export class Interaction {
     const justPressedB = bPressed && !this.vrInputState.bPressed;
 
     if (justPressedA) {
-      this.handleUnifiedVRClick();
+      this.handleUnifiedVRClick("button-a");
     }
 
     // B giữ vai trò fallback cho thao tác panel khi runtime không map đúng A.
@@ -580,13 +622,20 @@ export class Interaction {
 
   update() {
     if (this.isVR) {
-      this.updateVRNavigation();
-      this.updateVRPanelButtons();
-      this.updateVRPanelPose();
+      try {
+        this.updateVRNavigation();
+        this.updateVRPanelButtons();
+        this.updateVRPanelPose();
+      } catch (error) {
+        this.lastVRUpdateError =
+          error instanceof Error ? error.message : String(error);
+      }
+
       this.updateVRInputDebugOverlay([
         "VR Input Debug",
         this.lastVRInputSummary,
         `lastHit=${this.lastVRClickTarget}`,
+        `err=${this.lastVRUpdateError}`,
       ]);
     } else {
       this.updateVRInputDebugOverlay([]);
