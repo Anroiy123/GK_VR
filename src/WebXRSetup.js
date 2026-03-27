@@ -1,4 +1,4 @@
-import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { VRButton } from "three/addons/webxr/VRButton.js";
 
 export class WebXRSetup {
   constructor(renderer) {
@@ -11,21 +11,21 @@ export class WebXRSetup {
 
   init() {
     this.renderer.xr.enabled = true;
-    this.renderer.xr.setReferenceSpaceType('local-floor');
+    this.renderer.xr.setReferenceSpaceType("local-floor");
 
     const vrButton = VRButton.createButton(this.renderer);
     document.body.appendChild(vrButton);
 
-    this.renderer.xr.addEventListener('sessionstart', () => {
+    this.renderer.xr.addEventListener("sessionstart", () => {
       this.applySpawnOffset();
       this.isPresenting = true;
-      document.body.classList.add('vr-active');
+      document.body.classList.add("vr-active");
       this.onSessionStart?.();
     });
 
-    this.renderer.xr.addEventListener('sessionend', () => {
+    this.renderer.xr.addEventListener("sessionend", () => {
       this.isPresenting = false;
-      document.body.classList.remove('vr-active');
+      document.body.classList.remove("vr-active");
       this.onSessionEnd?.();
     });
   }
@@ -39,7 +39,8 @@ export class WebXRSetup {
 
     // Move viewer away from origin so Earth stays in front instead of at the headset position.
     const offset = new XRRigidTransform({ x: 0, y: 0, z: -this.spawnDistance });
-    const shiftedReferenceSpace = baseReferenceSpace.getOffsetReferenceSpace(offset);
+    const shiftedReferenceSpace =
+      baseReferenceSpace.getOffsetReferenceSpace(offset);
     this.renderer.xr.setReferenceSpace(shiftedReferenceSpace);
   }
 }

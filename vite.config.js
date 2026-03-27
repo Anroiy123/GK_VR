@@ -1,13 +1,13 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: '/',
+  base: "/",
   server: {
     host: true,
     https: false,
   },
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     assetsInlineLimit: 0,
   },
 });

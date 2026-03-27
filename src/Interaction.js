@@ -24,6 +24,9 @@ export class Interaction {
     this.vrCameraDirection = new THREE.Vector3();
     this.vrCameraRight = new THREE.Vector3();
     this.vrZoomSpeed = 0.08;
+    this.vrInputDebugEl = null;
+    this.lastVRClickTarget = "none";
+    this.lastVRInputSummary = "idle";
     this.vrInputState = {
       aPressed: false,
       bPressed: false,
@@ -35,6 +38,44 @@ export class Interaction {
     );
     this.setupVRControllers();
     this.setupVRControlPanel();
+    this.setupVRInputDebugOverlay();
+  }
+
+  setupVRInputDebugOverlay() {
+    const overlay = document.createElement("div");
+    overlay.id = "vr-input-debug";
+    overlay.setAttribute("aria-live", "polite");
+    overlay.style.position = "fixed";
+    overlay.style.left = "12px";
+    overlay.style.bottom = "12px";
+    overlay.style.zIndex = "9999";
+    overlay.style.padding = "8px 10px";
+    overlay.style.borderRadius = "8px";
+    overlay.style.background = "rgba(4, 10, 22, 0.8)";
+    overlay.style.border = "1px solid rgba(130, 180, 255, 0.45)";
+    overlay.style.color = "#d7ebff";
+    overlay.style.font = "12px/1.4 Consolas, 'Courier New', monospace";
+    overlay.style.pointerEvents = "none";
+    overlay.style.whiteSpace = "pre-wrap";
+    overlay.style.maxWidth = "360px";
+    overlay.style.display = "none";
+    overlay.textContent = "VR input debug";
+    document.body.appendChild(overlay);
+    this.vrInputDebugEl = overlay;
+  }
+
+  updateVRInputDebugOverlay(lines) {
+    if (!this.vrInputDebugEl) {
+      return;
+    }
+
+    if (!this.isVR) {
+      this.vrInputDebugEl.style.display = "none";
+      return;
+    }
+
+    this.vrInputDebugEl.style.display = "block";
+    this.vrInputDebugEl.textContent = lines.join("\n");
   }
 
   setupVRControllers() {
@@ -210,6 +251,14 @@ export class Interaction {
     if (this.vrPanel) {
       this.vrPanel.visible = isActive;
     }
+
+    if (!isActive) {
+      this.vrInputState.aPressed = false;
+      this.vrInputState.bPressed = false;
+      this.lastVRClickTarget = "none";
+      this.lastVRInputSummary = "idle";
+    }
+
     this.clearSelection();
   }
 
@@ -242,14 +291,23 @@ export class Interaction {
       return;
     }
 
-    const tempMatrix = new THREE.Matrix4();
-    tempMatrix.identity().extractRotation(activeController.matrixWorld);
-    this.raycaster.ray.origin.setFromMatrixPosition(
-      activeController.matrixWorld,
-    );
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    this.handleUnifiedVRClick();
+  }
+
+  handleUnifiedVRClick() {
+    if (!this.refreshVRPanelRayFromRightController()) {
+      this.lastVRClickTarget = "no-controller";
+      return false;
+    }
+
+    if (this.handleVRPanelSelection()) {
+      this.lastVRClickTarget = "panel";
+      return true;
+    }
 
     this.handleMarkerSelection();
+    this.lastVRClickTarget = this.selectedMarker ? "marker" : "none";
+    return this.selectedMarker !== null;
   }
 
   handleVRPanelSelection() {
@@ -287,33 +345,67 @@ export class Interaction {
         zoomY: 0,
         aPressed: false,
         bPressed: false,
+        sourceHandedness: "none",
+        profile: "none",
+        buttonCount: 0,
+        pressedButtons: [],
       };
     }
 
     let zoomY = 0;
     let aPressed = false;
     let bPressed = false;
+    let sourceHandedness = "none";
+    let profile = "unknown";
+    let buttonCount = 0;
+    let pressedButtons = [];
+    const sources = Array.from(session.inputSources || []);
 
-    for (const source of session.inputSources) {
-      if (source.handedness !== "right") {
-        continue;
-      }
+    const rightSource = sources.find(
+      (source) => source?.handedness === "right" && source?.gamepad,
+    );
+    const fallbackSource = sources.find(
+      (source) => source?.targetRayMode === "tracked-pointer" && source?.gamepad,
+    );
+    const activeSource = rightSource ?? fallbackSource ?? null;
 
-      const gamepad = source.gamepad;
-      if (!gamepad) {
-        continue;
-      }
-
-      const axisY = gamepad.axes?.[3] ?? gamepad.axes?.[1] ?? 0;
-      zoomY = axisY;
-
-      // Quest layouts can vary by runtime/profile; support common A/B slots.
-      aPressed = this.getButtonPressed(gamepad, [4, 3]);
-      bPressed = this.getButtonPressed(gamepad, [5]);
-      break;
+    if (!activeSource?.gamepad) {
+      return {
+        zoomY,
+        aPressed,
+        bPressed,
+        sourceHandedness,
+        profile,
+        buttonCount,
+        pressedButtons,
+      };
     }
 
-    return { zoomY, aPressed, bPressed };
+    const gamepad = activeSource.gamepad;
+    const axisY = gamepad.axes?.[3] ?? gamepad.axes?.[1] ?? 0;
+    zoomY = axisY;
+    sourceHandedness = activeSource.handedness || "none";
+    profile = activeSource.profiles?.[0] || "unknown";
+    buttonCount = gamepad.buttons?.length ?? 0;
+    pressedButtons = (gamepad.buttons || [])
+      .map((button, index) => (button?.pressed ? index : -1))
+      .filter((index) => index >= 0);
+
+    // Ưu tiên index chuẩn của Quest cho A/B, có fallback cho runtime khác.
+    const aCandidates = buttonCount > 4 ? [4, 3] : [0, 3];
+    const bCandidates = buttonCount > 5 ? [5] : [1, 2];
+    aPressed = this.getButtonPressed(gamepad, aCandidates);
+    bPressed = this.getButtonPressed(gamepad, bCandidates);
+
+    return {
+      zoomY,
+      aPressed,
+      bPressed,
+      sourceHandedness,
+      profile,
+      buttonCount,
+      pressedButtons,
+    };
   }
 
   refreshVRPanelRayFromRightController() {
@@ -359,19 +451,32 @@ export class Interaction {
   }
 
   updateVRPanelButtons() {
-    const { aPressed, bPressed } = this.getRightControllerInput();
+    const {
+      aPressed,
+      bPressed,
+      sourceHandedness,
+      profile,
+      buttonCount,
+      pressedButtons,
+    } = this.getRightControllerInput();
     const justPressedA = aPressed && !this.vrInputState.aPressed;
     const justPressedB = bPressed && !this.vrInputState.bPressed;
 
-    if (
-      (justPressedA || justPressedB) &&
-      this.refreshVRPanelRayFromRightController()
-    ) {
-      this.handleVRPanelSelection();
+    if (justPressedA) {
+      this.handleUnifiedVRClick();
+    }
+
+    // B giữ vai trò fallback cho thao tác panel khi runtime không map đúng A.
+    if (justPressedB && this.refreshVRPanelRayFromRightController()) {
+      if (this.handleVRPanelSelection()) {
+        this.lastVRClickTarget = "panel-b";
+      }
     }
 
     this.vrInputState.aPressed = aPressed;
     this.vrInputState.bPressed = bPressed;
+
+    this.lastVRInputSummary = `hand=${sourceHandedness} profile=${profile} buttons=${buttonCount} pressed=[${pressedButtons.join(",")}] A=${aPressed ? 1 : 0} B=${bPressed ? 1 : 0}`;
   }
 
   updateVRPanelPose() {
@@ -478,6 +583,13 @@ export class Interaction {
       this.updateVRNavigation();
       this.updateVRPanelButtons();
       this.updateVRPanelPose();
+      this.updateVRInputDebugOverlay([
+        "VR Input Debug",
+        this.lastVRInputSummary,
+        `lastHit=${this.lastVRClickTarget}`,
+      ]);
+    } else {
+      this.updateVRInputDebugOverlay([]);
     }
 
     if (!this.selectedMarker) {
