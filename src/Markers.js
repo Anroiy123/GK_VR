@@ -524,7 +524,7 @@ export class Markers {
         .addScaledVector(marker.userData.surfaceNormal, marker.userData.landmarkHeight + 0.3);
 
       const vrPanel = marker.userData.vrPanel;
-      if (this.showVRPanels && marker.userData.isSelected && marker.userData.isFrontFacing && this.isVisible) {
+      if (this.showVRPanels && marker.userData.isSelected && this.isVisible) {
         vrPanel.position.copy(marker.userData.desktopAnchor).addScaledVector(marker.userData.surfaceNormal, 0.12);
         vrPanel.visible = true;
       } else {

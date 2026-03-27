@@ -682,6 +682,22 @@ export class Interaction {
         `lastHit=${this.lastVRClickTarget}`,
         `err=${this.lastVRUpdateError}`,
       ]);
+
+      const activeController = this.getRightVRController();
+      if (activeController) {
+        const line = activeController.getObjectByName("line");
+        if (line && line.material) {
+          if (this.vrInputState.aPressed) {
+            line.material.color.setHex(0x0000ff); // BLUE
+          } else if (this.lastVRRayHit.startsWith("marker:") && !this.lastVRRayHit.includes("none") && !this.lastVRRayHit.includes("filtered")) {
+            line.material.color.setHex(0x00ff00); // GREEN
+          } else if (this.lastVRRayHit.startsWith("panel:") && !this.lastVRRayHit.includes("none")) {
+            line.material.color.setHex(0xffff00); // YELLOW
+          } else {
+            line.material.color.setHex(0xff0000); // RED
+          }
+        }
+      }
     } else {
       this.updateVRInputDebugOverlay([]);
     }
@@ -692,7 +708,7 @@ export class Interaction {
 
     if (
       !this.markersObj.isVisible ||
-      !this.selectedMarker.userData.isFrontFacing
+      (!this.isVR && !this.selectedMarker.userData.isFrontFacing)
     ) {
       this.clearSelection();
       return;
