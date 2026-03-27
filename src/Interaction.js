@@ -528,11 +528,10 @@ export class Interaction {
       this.handleUnifiedVRClick("button-a");
     }
 
-    // B giữ vai trò fallback cho thao tác panel khi runtime không map đúng A.
-    if (justPressedB && this.refreshVRPanelRayFromRightController()) {
-      if (this.handleVRPanelSelection()) {
-        this.lastVRClickTarget = "panel-b";
-      }
+    // B Button (Index 5 / 1) dùng để bật/tắt bảng điều khiển
+    if (justPressedB && this.vrPanel) {
+      this.vrPanel.visible = !this.vrPanel.visible;
+      this.lastVRClickTarget = this.vrPanel.visible ? "panel-shown" : "panel-hidden";
     }
 
     this.vrInputState.aPressed = aPressed;
@@ -555,13 +554,18 @@ export class Interaction {
       .crossVectors(this.vrCameraDirection, new THREE.Vector3(0, 1, 0))
       .normalize();
 
+    // Dời bảng sang góc dưới-trái (hoặc phải) và nới khoảng cách để không che Trái Đất
     this.vrPanelAnchor
       .copy(this.vrCameraPosition)
-      .addScaledVector(this.vrCameraDirection, 1.1)
-      .addScaledVector(this.vrCameraRight, 0.5);
+      .addScaledVector(this.vrCameraDirection, 1.2) // Cách mắt 1.2m
+      .addScaledVector(this.vrCameraRight, -0.6)    // Lệch sang Trái 0.6m
+      .addScaledVector(new THREE.Vector3(0, 1, 0), -0.4); // Hạ thấp xuống 0.4m
 
     this.vrPanel.position.copy(this.vrPanelAnchor);
     this.vrPanel.quaternion.copy(xrCamera.quaternion);
+
+    // Kích thước nhỏ lại một chút để không gây cảm giác vướng víu
+    this.vrPanel.scale.set(0.7, 0.7, 0.7);
   }
 
   handleMarkerSelection() {
