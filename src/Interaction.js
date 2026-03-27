@@ -30,6 +30,7 @@ export class Interaction {
     this.lastVRUpdateError = "none";
     this.lastVRClickTime = 0;
     this.lastVRClickSource = "none";
+    this.lastVRRayHit = "none";
     this.vrInputState = {
       aPressed: false,
       bPressed: false,
@@ -288,6 +289,7 @@ export class Interaction {
       this.lastVRClickTarget = "none";
       this.lastVRInputSummary = "idle";
       this.lastVRUpdateError = "none";
+      this.lastVRRayHit = "none";
       this.lastVRClickTime = 0;
       this.lastVRClickSource = "none";
     }
@@ -366,10 +368,12 @@ export class Interaction {
 
     const hits = this.raycaster.intersectObjects(this.vrPanelButtons, false);
     if (!hits.length) {
+      this.lastVRRayHit = "panel:none";
       return false;
     }
 
     const action = hits[0].object.userData.action;
+    this.lastVRRayHit = `panel:${action}`;
     this.executeVRAction(action);
     return true;
   }
@@ -537,7 +541,9 @@ export class Interaction {
     // B Button (Index 5 / 1) dùng để bật/tắt bảng điều khiển
     if (justPressedB && this.vrPanel) {
       this.vrPanel.visible = !this.vrPanel.visible;
-      this.lastVRClickTarget = this.vrPanel.visible ? "panel-shown" : "panel-hidden";
+      this.lastVRClickTarget = this.vrPanel.visible
+        ? "panel-shown"
+        : "panel-hidden";
     }
 
     this.vrInputState.aPressed = aPressed;
@@ -607,6 +613,11 @@ export class Interaction {
   findIntersectedMarker() {
     const intersects = this.raycaster.intersectObjects(this.markersList, true);
 
+    if (!intersects.length) {
+      this.lastVRRayHit = "marker:none";
+      return null;
+    }
+
     for (const intersect of intersects) {
       let object = intersect.object;
 
@@ -614,14 +625,18 @@ export class Interaction {
         object = object.parent;
       }
 
-      if (
-        object.userData.isMarker &&
-        object.userData.isFrontFacing &&
-        object.visible
-      ) {
+      if (!object.userData.isMarker || !object.visible) {
+        continue;
+      }
+
+      // Trong VR, raycast lấy theo tia tay cầm nên không ép marker phải front-facing.
+      if (this.isVR || object.userData.isFrontFacing) {
+        this.lastVRRayHit = `marker:${object.userData.name ?? "unknown"}`;
         return object;
       }
     }
+
+    this.lastVRRayHit = "marker:filtered";
 
     return null;
   }
@@ -663,6 +678,7 @@ export class Interaction {
       this.updateVRInputDebugOverlay([
         "VR Input Debug",
         this.lastVRInputSummary,
+        `ray=${this.lastVRRayHit}`,
         `lastHit=${this.lastVRClickTarget}`,
         `err=${this.lastVRUpdateError}`,
       ]);

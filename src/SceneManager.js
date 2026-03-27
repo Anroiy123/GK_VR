@@ -223,7 +223,10 @@ export class SceneManager {
     this.clouds.update(delta, speed, this.camera.position.length());
     this.atmosphere.update(this.camera, sunPos);
 
-    this.markers.update(timestamp, this.camera);
+    const activeCamera = this.webxr.isPresenting
+      ? this.renderer.xr.getCamera(this.camera)
+      : this.camera;
+    this.markers.update(timestamp, activeCamera);
     this.interaction.update();
     this.satellite.update(delta, speed);
 
