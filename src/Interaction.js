@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 export class Interaction {
   constructor(camera, scene, renderer, markersObj, ui) {
@@ -12,8 +12,8 @@ export class Interaction {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.isVR = false;
-    this.vrController = null;
-    this.vrControllerGrip = null;
+    this.vrControllers = [];
+    this.vrControllerGrips = [];
     this.selectedMarker = null;
     this.screenAnchor = new THREE.Vector3();
     this.vrReferenceSpace = null;
@@ -23,31 +23,103 @@ export class Interaction {
     this.vrCameraPosition = new THREE.Vector3();
     this.vrCameraDirection = new THREE.Vector3();
     this.vrCameraRight = new THREE.Vector3();
-    this.vrPanelInputCooldown = 0;
-    this.vrMoveSpeed = 0.08;
-    this.vrTurnSpeed = 0.03;
+    this.vrZoomSpeed = 0.08;
+    this.vrInputState = {
+      aPressed: false,
+      bPressed: false,
+    };
 
-    this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown.bind(this));
+    this.renderer.domElement.addEventListener(
+      "pointerdown",
+      this.onPointerDown.bind(this),
+    );
     this.setupVRControllers();
     this.setupVRControlPanel();
   }
 
   setupVRControllers() {
-    this.vrController = this.renderer.xr.getController(0);
-    this.vrController.addEventListener('selectstart', this.onVRSelect.bind(this));
-    this.scene.add(this.vrController);
+    for (let index = 0; index < 2; index += 1) {
+      const controller = this.renderer.xr.getController(index);
+      controller.userData.xrHandedness = "none";
+      controller.userData.xrConnected = false;
 
-    this.vrControllerGrip = this.renderer.xr.getControllerGrip(0);
-    this.scene.add(this.vrControllerGrip);
+      controller.addEventListener("connected", (event) => {
+        controller.userData.xrHandedness = event.data?.handedness ?? "none";
+        controller.userData.xrConnected = true;
+        controller.userData.xrInputSource = event.data ?? null;
+      });
 
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, 0, -1),
-    ]);
-    const line = new THREE.Line(geometry);
-    line.name = 'line';
-    line.scale.z = 5;
-    this.vrController.add(line);
+      controller.addEventListener("disconnected", () => {
+        controller.userData.xrHandedness = "none";
+        controller.userData.xrConnected = false;
+        controller.userData.xrInputSource = null;
+      });
+
+      controller.addEventListener("selectstart", this.onVRSelect.bind(this));
+      this.scene.add(controller);
+      this.vrControllers.push(controller);
+
+      const grip = this.renderer.xr.getControllerGrip(index);
+      this.scene.add(grip);
+      this.vrControllerGrips.push(grip);
+
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -1),
+      ]);
+      const line = new THREE.Line(geometry);
+      line.name = "line";
+      line.scale.z = 5;
+      controller.add(line);
+    }
+  }
+
+  getRightVRController() {
+    const session = this.renderer.xr.getSession();
+    if (session) {
+      const rightSource = Array.from(session.inputSources).find(
+        (source) => source?.handedness === "right",
+      );
+
+      if (rightSource) {
+        const byInputSource = this.vrControllers.find(
+          (controller) => controller.userData.xrInputSource === rightSource,
+        );
+
+        if (byInputSource) {
+          return byInputSource;
+        }
+      }
+    }
+
+    const rightController = this.vrControllers.find(
+      (controller) =>
+        controller.userData.xrConnected &&
+        controller.userData.xrHandedness === "right",
+    );
+
+    if (rightController) {
+      return rightController;
+    }
+
+    if (this.vrControllers[1]) {
+      return this.vrControllers[1];
+    }
+
+    const connectedController = this.vrControllers.find(
+      (controller) => controller.userData.xrConnected,
+    );
+    return connectedController ?? this.vrControllers[0] ?? null;
+  }
+
+  getButtonPressed(gamepad, indices) {
+    for (const index of indices) {
+      if (gamepad.buttons?.[index]?.pressed) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   setupVRControlPanel() {
@@ -61,21 +133,21 @@ export class Interaction {
         transparent: true,
         opacity: 0.82,
         depthWrite: false,
-      })
+      }),
     );
     panel.add(bg);
 
     const buttonConfig = [
-      { label: 'ISS', action: 'iss', x: -0.28, y: 0.19 },
-      { label: 'Mute', action: 'mute', x: 0, y: 0.19 },
-      { label: 'Markers', action: 'markers', x: 0.28, y: 0.19 },
-      { label: 'Bump', action: 'bump', x: -0.28, y: 0.02 },
-      { label: 'Clouds', action: 'clouds', x: 0, y: 0.02 },
-      { label: 'Atmo', action: 'atmosphere', x: 0.28, y: 0.02 },
-      { label: 'Speed -', action: 'speedDown', x: -0.18, y: -0.16 },
-      { label: 'Speed +', action: 'speedUp', x: 0.18, y: -0.16 },
-      { label: 'Sun -', action: 'sunDown', x: -0.18, y: -0.31 },
-      { label: 'Sun +', action: 'sunUp', x: 0.18, y: -0.31 },
+      { label: "ISS", action: "iss", x: -0.28, y: 0.19 },
+      { label: "Mute", action: "mute", x: 0, y: 0.19 },
+      { label: "Markers", action: "markers", x: 0.28, y: 0.19 },
+      { label: "Bump", action: "bump", x: -0.28, y: 0.02 },
+      { label: "Clouds", action: "clouds", x: 0, y: 0.02 },
+      { label: "Atmo", action: "atmosphere", x: 0.28, y: 0.02 },
+      { label: "Speed -", action: "speedDown", x: -0.18, y: -0.16 },
+      { label: "Speed +", action: "speedUp", x: 0.18, y: -0.16 },
+      { label: "Sun -", action: "sunDown", x: -0.18, y: -0.31 },
+      { label: "Sun +", action: "sunUp", x: 0.18, y: -0.31 },
     ];
 
     buttonConfig.forEach((config) => {
@@ -104,24 +176,24 @@ export class Interaction {
   }
 
   createButtonTexture(label) {
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 256;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'rgba(36, 72, 118, 0.95)';
-    ctx.strokeStyle = 'rgba(150, 215, 255, 0.95)';
+    ctx.fillStyle = "rgba(36, 72, 118, 0.95)";
+    ctx.strokeStyle = "rgba(150, 215, 255, 0.95)";
     ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.roundRect(10, 10, canvas.width - 20, canvas.height - 20, 30);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '700 78px Segoe UI';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 78px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.fillText(label, canvas.width / 2, canvas.height / 2 + 4);
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -132,7 +204,9 @@ export class Interaction {
 
   setVRMode(isActive) {
     this.isVR = isActive;
-    this.vrReferenceSpace = isActive ? this.renderer.xr.getReferenceSpace() : null;
+    this.vrReferenceSpace = isActive
+      ? this.renderer.xr.getReferenceSpace()
+      : null;
     if (this.vrPanel) {
       this.vrPanel.visible = isActive;
     }
@@ -150,19 +224,30 @@ export class Interaction {
     this.handleMarkerSelection();
   }
 
-  onVRSelect() {
+  onVRSelect(event) {
     if (!this.isVR) {
       return;
     }
 
-    const tempMatrix = new THREE.Matrix4();
-    tempMatrix.identity().extractRotation(this.vrController.matrixWorld);
-    this.raycaster.ray.origin.setFromMatrixPosition(this.vrController.matrixWorld);
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-
-    if (this.handleVRPanelSelection()) {
+    const activeController = this.getRightVRController();
+    if (
+      activeController &&
+      event?.target &&
+      event.target !== activeController
+    ) {
       return;
     }
+
+    if (!activeController) {
+      return;
+    }
+
+    const tempMatrix = new THREE.Matrix4();
+    tempMatrix.identity().extractRotation(activeController.matrixWorld);
+    this.raycaster.ray.origin.setFromMatrixPosition(
+      activeController.matrixWorld,
+    );
+    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
 
     this.handleMarkerSelection();
   }
@@ -183,47 +268,67 @@ export class Interaction {
   }
 
   executeVRAction(action) {
-    if (action === 'iss') this.ui.onISSToggle?.();
-    if (action === 'mute') this.ui.onMuteToggle?.();
-    if (action === 'markers') this.ui.onMarkersToggle?.();
-    if (action === 'bump') this.ui.onBumpToggle?.();
-    if (action === 'clouds') this.ui.onCloudsToggle?.();
-    if (action === 'atmosphere') this.ui.onAtmosphereToggle?.();
-    if (action === 'speedDown') this.ui.adjustSpeed(-0.2);
-    if (action === 'speedUp') this.ui.adjustSpeed(0.2);
-    if (action === 'sunDown') this.ui.adjustSunlight(-0.1);
-    if (action === 'sunUp') this.ui.adjustSunlight(0.1);
+    if (action === "iss") this.ui.onISSToggle?.();
+    if (action === "mute") this.ui.onMuteToggle?.();
+    if (action === "markers") this.ui.onMarkersToggle?.();
+    if (action === "bump") this.ui.onBumpToggle?.();
+    if (action === "clouds") this.ui.onCloudsToggle?.();
+    if (action === "atmosphere") this.ui.onAtmosphereToggle?.();
+    if (action === "speedDown") this.ui.adjustSpeed(-0.2);
+    if (action === "speedUp") this.ui.adjustSpeed(0.2);
+    if (action === "sunDown") this.ui.adjustSunlight(-0.1);
+    if (action === "sunUp") this.ui.adjustSunlight(0.1);
   }
 
-  getControllerAxes() {
+  getRightControllerInput() {
     const session = this.renderer.xr.getSession();
     if (!session) {
-      return { moveY: 0, turnX: 0 };
+      return {
+        zoomY: 0,
+        aPressed: false,
+        bPressed: false,
+      };
     }
 
-    let moveY = 0;
-    let turnX = 0;
+    let zoomY = 0;
+    let aPressed = false;
+    let bPressed = false;
 
     for (const source of session.inputSources) {
-      const gamepad = source.gamepad;
-      if (!gamepad || !gamepad.axes || gamepad.axes.length < 2) {
+      if (source.handedness !== "right") {
         continue;
       }
 
-      const axisY = gamepad.axes[3] ?? gamepad.axes[1] ?? 0;
-      const axisX = gamepad.axes[2] ?? gamepad.axes[0] ?? 0;
-
-      if (source.handedness === 'left') {
-        moveY = axisY;
-      } else if (source.handedness === 'right') {
-        turnX = axisX;
-      } else {
-        moveY = axisY;
-        turnX = axisX;
+      const gamepad = source.gamepad;
+      if (!gamepad) {
+        continue;
       }
+
+      const axisY = gamepad.axes?.[3] ?? gamepad.axes?.[1] ?? 0;
+      zoomY = axisY;
+
+      // Quest layouts can vary by runtime/profile; support common A/B slots.
+      aPressed = this.getButtonPressed(gamepad, [4, 3]);
+      bPressed = this.getButtonPressed(gamepad, [5]);
+      break;
     }
 
-    return { moveY, turnX };
+    return { zoomY, aPressed, bPressed };
+  }
+
+  refreshVRPanelRayFromRightController() {
+    const activeController = this.getRightVRController();
+    if (!activeController) {
+      return false;
+    }
+
+    const tempMatrix = new THREE.Matrix4();
+    tempMatrix.identity().extractRotation(activeController.matrixWorld);
+    this.raycaster.ray.origin.setFromMatrixPosition(
+      activeController.matrixWorld,
+    );
+    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    return true;
   }
 
   updateVRNavigation() {
@@ -234,26 +339,39 @@ export class Interaction {
       }
     }
 
-    const { moveY, turnX } = this.getControllerAxes();
+    const { zoomY } = this.getRightControllerInput();
     const deadZone = 0.2;
-    const moveValue = Math.abs(moveY) > deadZone ? moveY : 0;
-    const turnValue = Math.abs(turnX) > deadZone ? turnX : 0;
+    const zoomValue = Math.abs(zoomY) > deadZone ? zoomY : 0;
 
-    if (moveValue === 0 && turnValue === 0) {
+    if (zoomValue === 0) {
       return;
     }
 
-    const moveStep = -moveValue * this.vrMoveSpeed;
-    const turnStep = -turnValue * this.vrTurnSpeed;
-
-    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), turnStep);
+    const moveStep = -zoomValue * this.vrZoomSpeed;
     const transform = new XRRigidTransform(
       { x: 0, y: 0, z: moveStep },
-      { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w }
+      { x: 0, y: 0, z: 0, w: 1 },
     );
 
-    this.vrReferenceSpace = this.vrReferenceSpace.getOffsetReferenceSpace(transform);
+    this.vrReferenceSpace =
+      this.vrReferenceSpace.getOffsetReferenceSpace(transform);
     this.renderer.xr.setReferenceSpace(this.vrReferenceSpace);
+  }
+
+  updateVRPanelButtons() {
+    const { aPressed, bPressed } = this.getRightControllerInput();
+    const justPressedA = aPressed && !this.vrInputState.aPressed;
+    const justPressedB = bPressed && !this.vrInputState.bPressed;
+
+    if (
+      (justPressedA || justPressedB) &&
+      this.refreshVRPanelRayFromRightController()
+    ) {
+      this.handleVRPanelSelection();
+    }
+
+    this.vrInputState.aPressed = aPressed;
+    this.vrInputState.bPressed = bPressed;
   }
 
   updateVRPanelPose() {
@@ -266,7 +384,9 @@ export class Interaction {
     xrCamera.getWorldDirection(this.vrCameraDirection);
     this.vrCameraDirection.normalize();
 
-    this.vrCameraRight.crossVectors(this.vrCameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
+    this.vrCameraRight
+      .crossVectors(this.vrCameraDirection, new THREE.Vector3(0, 1, 0))
+      .normalize();
 
     this.vrPanelAnchor
       .copy(this.vrCameraPosition)
@@ -318,7 +438,11 @@ export class Interaction {
         object = object.parent;
       }
 
-      if (object.userData.isMarker && object.userData.isFrontFacing && object.visible) {
+      if (
+        object.userData.isMarker &&
+        object.userData.isFrontFacing &&
+        object.visible
+      ) {
         return object;
       }
     }
@@ -341,7 +465,9 @@ export class Interaction {
       return;
     }
 
-    this.screenAnchor.copy(this.selectedMarker.userData.desktopAnchor).project(this.camera);
+    this.screenAnchor
+      .copy(this.selectedMarker.userData.desktopAnchor)
+      .project(this.camera);
     const x = (this.screenAnchor.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-this.screenAnchor.y * 0.5 + 0.5) * window.innerHeight;
     this.ui.setLocationPopupPosition(x, y);
@@ -350,6 +476,7 @@ export class Interaction {
   update() {
     if (this.isVR) {
       this.updateVRNavigation();
+      this.updateVRPanelButtons();
       this.updateVRPanelPose();
     }
 
@@ -357,7 +484,10 @@ export class Interaction {
       return;
     }
 
-    if (!this.markersObj.isVisible || !this.selectedMarker.userData.isFrontFacing) {
+    if (
+      !this.markersObj.isVisible ||
+      !this.selectedMarker.userData.isFrontFacing
+    ) {
       this.clearSelection();
       return;
     }

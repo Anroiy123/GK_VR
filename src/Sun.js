@@ -1,8 +1,5 @@
 import * as THREE from "three";
-import { loadAdaptiveEquirectangularTexture } from "./AdaptiveTexture.js";
 import { SunShader } from "./SunShader.js";
-
-const SUN_TEXTURE_PATHS = ["NewTextures/8k_sun.jpg"];
 
 const MIN_SUNLIGHT_MULTIPLIER = 0.5;
 const MAX_SUNLIGHT_MULTIPLIER = 3;
@@ -10,23 +7,27 @@ const DEFAULT_SUNLIGHT_MULTIPLIER = 1.4;
 
 const SUN_VISUALS = {
   surface: {
-    detailBoost: 0.16,
-    contrast: 1.06,
-    emissiveStrength: 1.02,
+    coreBoost: 1.2,
+    rimPower: 1.75,
+    noiseScale: 6.8,
   },
   glow: {
-    innerScale: 6.2,
-    coronaScale: 8.4,
-    haloScale: 16.5,
-    outerScale: 20.5,
-    innerOpacityBase: 0.82,
-    coronaOpacityBase: 0.52,
-    haloOpacityBase: 0.32,
-    outerOpacityBase: 0.16,
-    innerOpacityBoost: 0.18,
-    coronaOpacityBoost: 0.16,
-    haloOpacityBoost: 0.32,
-    outerOpacityBoost: 0.2,
+    innerScale: 6.8,
+    coronaScale: 9.6,
+    raysScale: 11.4,
+    haloScale: 16.2,
+    outerScale: 19.2,
+    innerOpacityBase: 0.88,
+    coronaOpacityBase: 0.58,
+    raysOpacityBase: 0.36,
+    haloOpacityBase: 0.18,
+    outerOpacityBase: 0.08,
+    innerOpacityBoost: 0.22,
+    coronaOpacityBoost: 0.22,
+    raysOpacityBoost: 0.18,
+    haloOpacityBoost: 0.2,
+    outerOpacityBoost: 0.12,
+    raysScaleBoost: 0.055,
     haloScaleBoost: 0.04,
     outerScaleBoost: 0.06,
   },
@@ -62,6 +63,14 @@ function getGlowOpacity(baseOpacity, opacityBoost, glowStrength) {
 
 function getGlowScale(radius, baseScale, scaleBoost, glowStrength) {
   return radius * baseScale * (1 + scaleBoost * glowStrength);
+}
+
+function getSurfaceIntensity(multiplier) {
+  const normalizedBrightness =
+    (clampSunlightMultiplier(multiplier) - MIN_SUNLIGHT_MULTIPLIER) /
+    (MAX_SUNLIGHT_MULTIPLIER - MIN_SUNLIGHT_MULTIPLIER);
+
+  return 1.18 + normalizedBrightness * 1.62;
 }
 
 function createRadialGlowTexture(colorStops) {
@@ -122,24 +131,85 @@ function createInnerGlowTexture() {
 
 function createHaloTexture() {
   return createRadialGlowTexture([
-    [0, "rgba(255, 248, 220, 0)"],
-    [0.14, "rgba(255, 240, 198, 0.03)"],
-    [0.28, "rgba(255, 226, 154, 0.18)"],
-    [0.44, "rgba(255, 206, 122, 0.42)"],
-    [0.62, "rgba(255, 178, 78, 0.12)"],
-    [1, "rgba(255, 136, 38, 0)"],
+    [0, "rgba(255, 250, 236, 0)"],
+    [0.18, "rgba(255, 246, 228, 0.06)"],
+    [0.36, "rgba(255, 236, 204, 0.12)"],
+    [0.58, "rgba(255, 220, 176, 0.1)"],
+    [0.82, "rgba(255, 198, 146, 0.04)"],
+    [1, "rgba(255, 176, 124, 0)"],
   ]);
 }
 
 function createOuterGlowTexture() {
   return createRadialGlowTexture([
-    [0, "rgba(255, 240, 206, 0)"],
-    [0.2, "rgba(255, 224, 154, 0.02)"],
-    [0.34, "rgba(255, 194, 108, 0.08)"],
-    [0.5, "rgba(255, 166, 66, 0.12)"],
-    [0.68, "rgba(255, 128, 32, 0.04)"],
-    [1, "rgba(255, 110, 24, 0)"],
+    [0, "rgba(255, 242, 214, 0)"],
+    [0.24, "rgba(255, 230, 188, 0.015)"],
+    [0.46, "rgba(255, 214, 162, 0.04)"],
+    [0.68, "rgba(255, 196, 142, 0.032)"],
+    [0.9, "rgba(255, 178, 128, 0.012)"],
+    [1, "rgba(255, 162, 116, 0)"],
   ]);
+}
+
+function createRayBurstTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 1024;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Unable to create canvas context for sun rays.");
+  }
+
+  const center = canvas.width / 2;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < 32; i += 1) {
+    const angle = (i / 32) * Math.PI * 2;
+    const rayLength = center * (0.48 + (i % 4) * 0.1);
+    const innerRadius = center * 0.12;
+    const spread = 0.032 + (i % 3) * 0.006;
+
+    context.save();
+    context.translate(center, center);
+    context.rotate(angle);
+
+    const gradient = context.createLinearGradient(innerRadius, 0, rayLength, 0);
+    gradient.addColorStop(0, "rgba(255, 250, 232, 0.7)");
+    gradient.addColorStop(0.36, "rgba(255, 214, 102, 0.42)");
+    gradient.addColorStop(1, "rgba(255, 168, 64, 0)");
+
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.moveTo(innerRadius, -center * spread);
+    context.lineTo(rayLength, 0);
+    context.lineTo(innerRadius, center * spread);
+    context.closePath();
+    context.fill();
+
+    context.restore();
+  }
+
+  const coreGradient = context.createRadialGradient(
+    center,
+    center,
+    0,
+    center,
+    center,
+    center * 0.4,
+  );
+  coreGradient.addColorStop(0, "rgba(255, 252, 242, 0.95)");
+  coreGradient.addColorStop(0.3, "rgba(255, 238, 182, 0.55)");
+  coreGradient.addColorStop(1, "rgba(255, 180, 72, 0)");
+  context.fillStyle = coreGradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  return texture;
 }
 
 function createGlowSprite(texture, color, opacity, scale) {
@@ -162,25 +232,6 @@ function createGlowSprite(texture, color, opacity, scale) {
   return sprite;
 }
 
-async function loadSunTexture(textureLoader, textureQuality = {}) {
-  const texture = await loadAdaptiveEquirectangularTexture(
-    textureLoader,
-    SUN_TEXTURE_PATHS,
-    {
-      maxAnisotropy: textureQuality.maxAnisotropy,
-      maxTextureSize: textureQuality.maxTextureSize,
-      devicePixelRatio: textureQuality.devicePixelRatio,
-      colorSpace: THREE.SRGBColorSpace,
-    },
-  );
-
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.needsUpdate = true;
-
-  return texture;
-}
-
 export class Sun {
   constructor(radius = 1.5) {
     this.group = new THREE.Group();
@@ -188,6 +239,7 @@ export class Sun {
     this.mesh = null;
     this.innerGlow = null;
     this.corona = null;
+    this.rays = null;
     this.halo = null;
     this.outerGlow = null;
     this.elapsedTime = 0;
@@ -196,9 +248,12 @@ export class Sun {
   }
 
   async load(textureLoader, textureQuality = {}) {
-    const surfaceTexture = await loadSunTexture(textureLoader, textureQuality);
+    void textureLoader;
+    void textureQuality;
+
     const innerGlowTexture = createInnerGlowTexture();
     const coronaTexture = createCoronaTexture();
+    const raysTexture = createRayBurstTexture();
     const haloTexture = createHaloTexture();
     const outerGlowTexture = createOuterGlowTexture();
     const glowStrength = getGlowStrength(this.sunlightMultiplier);
@@ -209,15 +264,13 @@ export class Sun {
       fragmentShader: SunShader.fragmentShader,
       uniforms: THREE.UniformsUtils.clone(SunShader.uniforms),
       toneMapped: false,
+      transparent: true,
     });
-    material.uniforms.sunMap.value = surfaceTexture;
-    material.uniforms.detailBoost.value = SUN_VISUALS.surface.detailBoost;
-    material.uniforms.contrast.value = SUN_VISUALS.surface.contrast;
-    material.uniforms.emissiveStrength.value =
-      SUN_VISUALS.surface.emissiveStrength;
-    material.uniforms.texelSize.value.set(
-      1 / (surfaceTexture.image?.width ?? 2048),
-      1 / (surfaceTexture.image?.height ?? 1024),
+    material.uniforms.coreBoost.value = SUN_VISUALS.surface.coreBoost;
+    material.uniforms.rimPower.value = SUN_VISUALS.surface.rimPower;
+    material.uniforms.noiseScale.value = SUN_VISUALS.surface.noiseScale;
+    material.uniforms.intensity.value = getSurfaceIntensity(
+      this.sunlightMultiplier,
     );
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -248,9 +301,26 @@ export class Sun {
     );
     this.group.add(this.corona);
 
+    this.rays = createGlowSprite(
+      raysTexture,
+      0xffeed2,
+      getGlowOpacity(
+        SUN_VISUALS.glow.raysOpacityBase,
+        SUN_VISUALS.glow.raysOpacityBoost,
+        glowStrength,
+      ),
+      getGlowScale(
+        this.radius,
+        SUN_VISUALS.glow.raysScale,
+        SUN_VISUALS.glow.raysScaleBoost,
+        glowStrength,
+      ),
+    );
+    this.group.add(this.rays);
+
     this.halo = createGlowSprite(
       haloTexture,
-      0xfff0a6,
+      0xfff5dc,
       getGlowOpacity(
         SUN_VISUALS.glow.haloOpacityBase,
         SUN_VISUALS.glow.haloOpacityBoost,
@@ -267,7 +337,7 @@ export class Sun {
 
     this.outerGlow = createGlowSprite(
       outerGlowTexture,
-      0xffcd72,
+      0xffeccf,
       getGlowOpacity(
         SUN_VISUALS.glow.outerOpacityBase,
         SUN_VISUALS.glow.outerOpacityBoost,
@@ -301,19 +371,33 @@ export class Sun {
     this.viewDirection.normalize();
 
     if (this.innerGlow) {
-      this.innerGlow.position.copy(this.viewDirection).multiplyScalar(this.radius * 0.18);
+      this.innerGlow.position
+        .copy(this.viewDirection)
+        .multiplyScalar(this.radius * 0.18);
     }
 
     if (this.corona) {
-      this.corona.position.copy(this.viewDirection).multiplyScalar(this.radius * 0.12);
+      this.corona.position
+        .copy(this.viewDirection)
+        .multiplyScalar(this.radius * 0.12);
     }
 
     if (this.halo) {
-      this.halo.position.copy(this.viewDirection).multiplyScalar(this.radius * 0.04);
+      this.halo.position
+        .copy(this.viewDirection)
+        .multiplyScalar(this.radius * 0.04);
+    }
+
+    if (this.rays) {
+      this.rays.position
+        .copy(this.viewDirection)
+        .multiplyScalar(this.radius * 0.06);
     }
 
     if (this.outerGlow) {
-      this.outerGlow.position.copy(this.viewDirection).multiplyScalar(this.radius * 0.02);
+      this.outerGlow.position
+        .copy(this.viewDirection)
+        .multiplyScalar(this.radius * 0.02);
     }
   }
 
@@ -327,6 +411,10 @@ export class Sun {
     this.elapsedTime += delta;
     this.mesh.rotation.y += delta * 0.04;
     this.mesh.rotation.x += delta * 0.012;
+    this.mesh.material.uniforms.time.value = this.elapsedTime;
+    this.mesh.material.uniforms.intensity.value = getSurfaceIntensity(
+      this.sunlightMultiplier,
+    );
 
     const glowStrength = getGlowStrength(this.sunlightMultiplier);
     const glowPulse = 1 + Math.sin(this.elapsedTime * 0.9) * 0.015;
@@ -360,6 +448,29 @@ export class Sun {
           glowStrength,
         ) +
           Math.sin(this.elapsedTime * 0.85 + 0.8) * 0.04,
+        0,
+        1,
+      );
+    }
+
+    if (this.rays) {
+      this.rays.material.rotation -= delta * 0.032;
+      this.rays.scale.setScalar(
+        getGlowScale(
+          this.radius,
+          SUN_VISUALS.glow.raysScale,
+          SUN_VISUALS.glow.raysScaleBoost,
+          glowStrength,
+        ) *
+          (1 + Math.sin(this.elapsedTime * 0.5 + 0.2) * 0.035),
+      );
+      this.rays.material.opacity = clampOpacity(
+        getGlowOpacity(
+          SUN_VISUALS.glow.raysOpacityBase,
+          SUN_VISUALS.glow.raysOpacityBoost,
+          glowStrength,
+        ) +
+          Math.sin(this.elapsedTime * 1.05) * 0.04,
         0,
         1,
       );

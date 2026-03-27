@@ -15,7 +15,7 @@ const LOCATIONS = [
     desc: 'Đỉnh núi cao nhất Trái Đất',
     color: 0xe8f2ff,
     landmarkType: 'mountain',
-    imageUrls: buildPhotoUrls(['mount everest', 'himalayas', 'snow mountain'], 10),
+    imageUrls: buildPhotoUrls(['everest', 'mountain', 'snow'], 10),
   },
   {
     name: 'Tokyo',
@@ -24,7 +24,7 @@ const LOCATIONS = [
     desc: 'Siêu đô thị đông dân nhất thế giới',
     color: 0xff6b6b,
     landmarkType: 'torii',
-    imageUrls: buildPhotoUrls(['tokyo', 'japan', 'temple'], 20),
+    imageUrls: buildPhotoUrls(['tokyo', 'street', 'japan'], 20),
   },
   {
     name: 'New York',
@@ -33,7 +33,7 @@ const LOCATIONS = [
     desc: 'Trung tâm tài chính toàn cầu',
     color: 0x66a3ff,
     landmarkType: 'skyline',
-    imageUrls: buildPhotoUrls(['new york city', 'skyline', 'manhattan'], 30),
+    imageUrls: buildPhotoUrls(['newyork', 'skyline', 'city'], 30),
   },
   {
     name: 'Paris',
@@ -42,7 +42,7 @@ const LOCATIONS = [
     desc: 'Kinh đô ánh sáng',
     color: 0xffd166,
     landmarkType: 'eiffel',
-    imageUrls: buildPhotoUrls(['paris', 'eiffel tower', 'france'], 40),
+    imageUrls: buildPhotoUrls(['paris', 'eiffel', 'france'], 40),
   },
   {
     name: 'Kim Tự Tháp',
@@ -51,7 +51,7 @@ const LOCATIONS = [
     desc: 'Kỳ quan thế giới cổ đại',
     color: 0xd4a373,
     landmarkType: 'pyramid',
-    imageUrls: buildPhotoUrls(['giza', 'pyramid', 'egypt'], 50),
+    imageUrls: buildPhotoUrls(['pyramid', 'desert', 'egypt'], 50),
   },
   {
     name: 'Amazon',
@@ -60,7 +60,7 @@ const LOCATIONS = [
     desc: 'Lá phổi xanh của Trái Đất',
     color: 0x4caf50,
     landmarkType: 'tree',
-    imageUrls: buildPhotoUrls(['amazon rainforest', 'jungle', 'river'], 60),
+    imageUrls: buildPhotoUrls(['forest', 'jungle', 'river'], 60),
   },
   {
     name: 'Hà Nội',
@@ -69,7 +69,7 @@ const LOCATIONS = [
     desc: 'Thủ đô nghìn năm văn hiến của Việt Nam',
     color: 0xff8fab,
     landmarkType: 'khue-van-cac',
-    imageUrls: buildPhotoUrls(['hanoi', 'van mieu', 'viet nam'], 70),
+    imageUrls: buildPhotoUrls(['hanoi', 'vietnam', 'temple'], 70),
   },
 ];
 
@@ -133,6 +133,7 @@ export class Markers {
     this.textureLoader.setCrossOrigin('anonymous');
     this.loadingCardTexture = this.createImageCardTexture('Đang tải ảnh');
     this.failedCardTexture = this.createImageCardTexture('Không tải được ảnh');
+    this.showVRPanels = false;
     this.worldMarkerPosition = new THREE.Vector3();
     this.worldEarthCenter = new THREE.Vector3();
     this.cameraDirection = new THREE.Vector3();
@@ -474,7 +475,7 @@ export class Markers {
 
     if (!isSelected) {
       marker.userData.vrPanel.visible = false;
-    } else {
+    } else if (this.showVRPanels) {
       this.ensureVRPanelImages(marker);
     }
   }
@@ -489,6 +490,14 @@ export class Markers {
     this.markersList.forEach((marker) => {
       marker.userData.vrPanel.visible = false;
     });
+  }
+
+  setVRPanelMode(isEnabled) {
+    this.showVRPanels = isEnabled;
+
+    if (!isEnabled) {
+      this.hideAllVRPanels();
+    }
   }
 
   update(timestamp, camera) {
@@ -515,7 +524,7 @@ export class Markers {
         .addScaledVector(marker.userData.surfaceNormal, marker.userData.landmarkHeight + 0.3);
 
       const vrPanel = marker.userData.vrPanel;
-      if (marker.userData.isSelected && marker.userData.isFrontFacing && this.isVisible) {
+      if (this.showVRPanels && marker.userData.isSelected && marker.userData.isFrontFacing && this.isVisible) {
         vrPanel.position.copy(marker.userData.desktopAnchor).addScaledVector(marker.userData.surfaceNormal, 0.12);
         vrPanel.visible = true;
       } else {

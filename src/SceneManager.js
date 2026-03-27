@@ -95,12 +95,14 @@ export class SceneManager {
     this.webxr.onSessionStart = () => {
       this.controls.setEnabled(false);
       this.ui.setVRStatus(true);
+      this.markers.setVRPanelMode(true);
       this.interaction.setVRMode(true);
       this.interaction.clearSelection();
     };
     this.webxr.onSessionEnd = () => {
       this.controls.setEnabled(true);
       this.ui.setVRStatus(false);
+      this.markers.setVRPanelMode(false);
       this.interaction.setVRMode(false);
       this.interaction.clearSelection();
     };
@@ -140,6 +142,7 @@ export class SceneManager {
     // Thêm markers vào earthMesh để quay cùng Trái Đất
     earthMesh.add(this.markers.group);
     this.scene.add(this.markers.vrOverlayGroup);
+    this.markers.setVRPanelMode(false);
     
     // Thêm satellite vào scene
     this.scene.add(this.satellite.orbitGroup);

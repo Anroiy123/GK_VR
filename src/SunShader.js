@@ -1,66 +1,91 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 export const SunShader = {
   uniforms: {
-    sunMap: { value: null },
-    texelSize: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
-    detailBoost: { value: 0.3 },
-    contrast: { value: 1.12 },
-    emissiveStrength: { value: 1.08 },
+    time: { value: 0 },
+    intensity: { value: 1.4 },
+    coreBoost: { value: 1.15 },
+    rimPower: { value: 1.9 },
+    noiseScale: { value: 6.5 },
   },
 
   vertexShader: `
     varying vec2 vUv;
+    varying vec3 vNormal;
 
     void main() {
       vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
 
   fragmentShader: `
-    uniform sampler2D sunMap;
-    uniform vec2 texelSize;
-    uniform float detailBoost;
-    uniform float contrast;
-    uniform float emissiveStrength;
+    uniform float time;
+    uniform float intensity;
+    uniform float coreBoost;
+    uniform float rimPower;
+    uniform float noiseScale;
 
     varying vec2 vUv;
+    varying vec3 vNormal;
 
-    float sampleLuma(vec2 uv) {
-      return dot(texture2D(sunMap, uv).rgb, vec3(0.299, 0.587, 0.114));
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
     }
 
-    vec2 wrapUv(vec2 uv) {
-      return vec2(fract(uv.x), clamp(uv.y, 0.001, 0.999));
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+
+      float a = hash(i);
+      float b = hash(i + vec2(1.0, 0.0));
+      float c = hash(i + vec2(0.0, 1.0));
+      float d = hash(i + vec2(1.0, 1.0));
+
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(a, b, u.x) +
+        (c - a) * u.y * (1.0 - u.x) +
+        (d - b) * u.x * u.y;
     }
 
-    vec3 applyContrast(vec3 color, float amount) {
-      return clamp((color - 0.5) * amount + 0.5, 0.0, 1.0);
-    }
+    float fbm(vec2 p) {
+      float value = 0.0;
+      float amplitude = 0.5;
 
-    vec3 enhanceTexture(vec2 uv, vec3 baseColor) {
-      float center = dot(baseColor, vec3(0.299, 0.587, 0.114));
-      float neighborhood = (
-        sampleLuma(wrapUv(uv + vec2(texelSize.x, 0.0))) +
-        sampleLuma(wrapUv(uv - vec2(texelSize.x, 0.0))) +
-        sampleLuma(wrapUv(uv + vec2(0.0, texelSize.y))) +
-        sampleLuma(wrapUv(uv - vec2(0.0, texelSize.y)))
-      ) * 0.25;
+      for (int i = 0; i < 4; i++) {
+        value += noise(p) * amplitude;
+        p *= 2.03;
+        amplitude *= 0.5;
+      }
 
-      float highFrequency = clamp(center - neighborhood, -0.4, 0.4);
-      return clamp(baseColor + vec3(highFrequency * detailBoost), 0.0, 1.0);
+      return value;
     }
 
     void main() {
-      vec2 uv = wrapUv(vUv);
-      vec3 baseColor = texture2D(sunMap, uv).rgb;
-      vec3 detailedColor = enhanceTexture(uv, baseColor);
-      vec3 contrastedColor = applyContrast(detailedColor, contrast);
-      vec3 warmColor = contrastedColor * vec3(1.06, 0.97, 0.8);
-      vec3 color = warmColor * emissiveStrength;
+      vec2 centeredUv = vUv - 0.5;
+      float radius = length(centeredUv) * 2.0;
+      float discMask = smoothstep(1.02, 0.92, radius);
+      float core = pow(max(1.0 - radius, 0.0), 0.42) * coreBoost;
 
-      gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+      vec2 flowUv = vec2(vUv.x * 1.65, vUv.y * 0.95);
+      float plasma = fbm(flowUv * noiseScale + vec2(time * 0.35, -time * 0.18));
+      float swirl = fbm(flowUv * (noiseScale * 1.8) + vec2(-time * 0.9, time * 0.42));
+      float turbulence = mix(plasma, swirl, 0.42);
+
+      float surfacePulse = 0.85 + turbulence * 0.45;
+      float edgeRim = pow(clamp(1.0 - abs(vNormal.z), 0.0, 1.0), rimPower) * 0.35;
+      float brightness = (core * 1.12 + surfacePulse * 0.48 + edgeRim) * intensity;
+
+      vec3 deepGold = vec3(1.0, 0.55, 0.15);
+      vec3 hotGold = vec3(1.0, 0.86, 0.45);
+      vec3 whiteHot = vec3(1.0, 0.98, 0.9);
+
+      vec3 plasmaColor = mix(deepGold, hotGold, clamp(surfacePulse, 0.0, 1.0));
+      vec3 coreColor = mix(plasmaColor, whiteHot, clamp(core * 0.95, 0.0, 1.0));
+      vec3 color = coreColor * brightness;
+
+      gl_FragColor = vec4(clamp(color, 0.0, 2.5), discMask);
     }
   `,
 };
