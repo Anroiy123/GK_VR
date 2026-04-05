@@ -140,7 +140,7 @@ export class Markers {
     this.group = new THREE.Group();
     this.vrOverlayGroup = new THREE.Group();
     this.markersList = [];
-    this.isVisible = true;
+    this.isVisible = false;
     this.textureLoader = new THREE.TextureLoader();
     this.textureLoader.setCrossOrigin("anonymous");
     this.loadingCardTexture = this.createImageCardTexture("Đang tải ảnh");
@@ -150,6 +150,7 @@ export class Markers {
     this.worldEarthCenter = new THREE.Vector3();
     this.cameraDirection = new THREE.Vector3();
     this.createMarkers();
+    this.setVisible(false);
   }
 
   createMarkers() {

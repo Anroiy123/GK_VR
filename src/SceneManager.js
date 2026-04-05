@@ -44,6 +44,7 @@ export class SceneManager {
     this.baseSunLightIntensity = DEFAULT_SUN_PRESET.directionalLightBase;
     this.currentSunPreset = DEFAULT_SUN_PRESET;
     this.ambientLight = null;
+    this.activeCameraWorldPosition = new THREE.Vector3();
 
     this.earth = new Earth();
     this.clouds = new Clouds();
@@ -86,11 +87,6 @@ export class SceneManager {
       this.ui.setMarkersToggleText(isVisible);
     };
 
-    this.ui.onBumpToggle = () => {
-      const isEnabled = this.earth.toggleSurfaceDetail();
-      this.ui.setBumpToggleText(isEnabled);
-    };
-
     this.ui.onCloudsToggle = () => {
       const isVisible = this.clouds.toggleVisibility();
       this.ui.setCloudsToggleText(isVisible);
@@ -110,6 +106,7 @@ export class SceneManager {
       this.ui.setVRStatus(true);
       this.markers.setVRPanelMode(true);
       this.interaction.setVRMode(true);
+      this.sun.setVRMode(true);
       this.interaction.clearSelection();
     };
     this.webxr.onSessionEnd = () => {
@@ -117,6 +114,7 @@ export class SceneManager {
       this.ui.setVRStatus(false);
       this.markers.setVRPanelMode(false);
       this.interaction.setVRMode(false);
+      this.sun.setVRMode(false);
       this.interaction.clearSelection();
     };
 
@@ -152,7 +150,7 @@ export class SceneManager {
     this.scene.add(stars);
 
     // Audio setup
-    this.audioManager = new AudioManager(this.camera, earthMesh);
+    this.audioManager = new AudioManager(this.camera);
 
     // Thêm markers vào earthMesh để quay cùng Trái Đất
     earthMesh.add(this.markers.group);
@@ -164,7 +162,6 @@ export class SceneManager {
 
     this.webxr.init();
     this.ui.setMarkersToggleText(this.markers.isVisible);
-    this.ui.setBumpToggleText(this.earth.surfaceDetailEnabled);
     this.ui.setCloudsToggleText(this.clouds.isVisible);
     this.ui.setAtmosphereToggleText(this.atmosphere.isVisible);
     this.ui.setSunPreset(this.currentSunPreset.id);
@@ -240,32 +237,41 @@ export class SceneManager {
     this.sunLight.target.updateMatrixWorld();
     this.moonLight.position.copy(moonPos);
 
-    // Cập nhật visuals
-    this.sun.updatePosition(sunPos);
-    this.sun.updateView(this.camera.position);
-    this.sun.setBrightness(this.ui.sunlightMultiplier);
-    this.sun.update(delta);
-    this.moon.updatePosition(moonPos);
-
     if (!this.webxr.isPresenting) {
       this.controls.update();
     }
 
+    const activeCamera = this.webxr.isPresenting
+      ? this.renderer.xr.getCamera(this.camera)
+      : this.camera;
+
+    activeCamera?.updateMatrixWorld?.();
+    if (activeCamera?.getWorldPosition) {
+      activeCamera.getWorldPosition(this.activeCameraWorldPosition);
+    } else {
+      this.activeCameraWorldPosition.copy(this.camera.position);
+    }
+
+    const activeCameraDistance = this.activeCameraWorldPosition.length();
+
+    // Cập nhật visuals
+    this.sun.updatePosition(sunPos);
+    this.sun.updateView(this.activeCameraWorldPosition);
+    this.sun.setBrightness(this.ui.sunlightMultiplier);
+    this.sun.update(delta);
+    this.moon.updatePosition(moonPos);
+
     this.earth.updateRotation(earthRotationAngle);
     this.earth.setSunDirection(sunDirection);
     this.earth.setMoonPosition(moonPos);
-    this.earth.setCameraDistance(this.camera.position.length());
+    this.earth.setCameraDistance(activeCameraDistance);
     this.earth.setSunBrightness(
       this.ui.sunlightMultiplier * this.currentSunPreset.earthBrightnessFactor,
     );
     this.sunLight.intensity =
       this.baseSunLightIntensity * this.ui.sunlightMultiplier;
-    this.clouds.update(delta, speed, this.camera.position.length());
-    this.atmosphere.update(this.camera, sunPos);
-
-    const activeCamera = this.webxr.isPresenting
-      ? this.renderer.xr.getCamera(this.camera)
-      : this.camera;
+    this.clouds.update(delta, speed, activeCameraDistance);
+    this.atmosphere.update(this.activeCameraWorldPosition, sunPos);
     this.markers.update(timestamp, activeCamera);
     this.interaction.update();
     this.satellite.update(delta, speed);

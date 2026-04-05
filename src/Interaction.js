@@ -311,9 +311,8 @@ export class Interaction {
       { label: "ISS", action: "iss", x: -0.28, y: 0.19 },
       { label: "Mute", action: "mute", x: 0, y: 0.19 },
       { label: "Markers", action: "markers", x: 0.28, y: 0.19 },
-      { label: "Bump", action: "bump", x: -0.28, y: 0.02 },
-      { label: "Clouds", action: "clouds", x: 0, y: 0.02 },
-      { label: "Atmo", action: "atmosphere", x: 0.28, y: 0.02 },
+      { label: "Clouds", action: "clouds", x: -0.14, y: 0.02 },
+      { label: "Atmo", action: "atmosphere", x: 0.14, y: 0.02 },
       { label: "Speed -", action: "speedDown", x: -0.18, y: -0.16 },
       { label: "Speed +", action: "speedUp", x: 0.18, y: -0.16 },
       { label: "Sun -", action: "sunDown", x: -0.18, y: -0.31 },
@@ -496,7 +495,6 @@ export class Interaction {
     if (action === "iss") this.ui.onISSToggle?.();
     if (action === "mute") this.ui.onMuteToggle?.();
     if (action === "markers") this.ui.onMarkersToggle?.();
-    if (action === "bump") this.ui.onBumpToggle?.();
     if (action === "clouds") this.ui.onCloudsToggle?.();
     if (action === "atmosphere") this.ui.onAtmosphereToggle?.();
     if (action === "speedDown") this.ui.adjustSpeed(-0.2);

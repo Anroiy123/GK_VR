@@ -103,9 +103,19 @@ export class Atmosphere {
     this.mesh.material.uniforms.alphaMax.value = atmosphere.alphaMax;
   }
 
-  update(camera, sunPosition) {
+  update(cameraOrPosition, sunPosition) {
     if (!this.mesh) return;
-    this.mesh.material.uniforms.viewPosition.value.copy(camera.position);
+
+    if (cameraOrPosition?.isVector3) {
+      this.mesh.material.uniforms.viewPosition.value.copy(cameraOrPosition);
+    } else if (cameraOrPosition?.getWorldPosition) {
+      cameraOrPosition.getWorldPosition(
+        this.mesh.material.uniforms.viewPosition.value,
+      );
+    } else if (cameraOrPosition?.position) {
+      this.mesh.material.uniforms.viewPosition.value.copy(cameraOrPosition.position);
+    }
+
     if (sunPosition) {
       this.mesh.material.uniforms.sunPosition.value.copy(sunPosition);
     }

@@ -1,82 +1,106 @@
-import * as THREE from 'three';
+import * as THREE from "three";
+
+const DEFAULT_MASTER_VOLUME = 1;
+const SILENT_VOLUME = 0;
+const SOUNDTRACK_URL = new URL(
+  "../sound/Interstellar Main Theme - Extra Extended - Soundtrack by  Hans Zimmer.mp3",
+  import.meta.url,
+).href;
 
 export class AudioManager {
-  constructor(camera, targetMesh) {
+  constructor(camera) {
     this.listener = new THREE.AudioListener();
     camera.add(this.listener);
 
-    this.ambientSound = new THREE.Audio(this.listener);
-    this.earthHum = new THREE.PositionalAudio(this.listener);
-    targetMesh.add(this.earthHum);
-
-    this.isAudioEnabled = false;
     this.audioContext = THREE.AudioContext.getContext();
+    this.audioInput = this.getListenerInput();
+    this.soundtrack = this.createSoundtrackElement();
+    this.soundtrackSource = null;
+    this.hasPlaybackStarted = false;
+    this.isAudioEnabled = false;
 
-    this.setupSynthesizedAudio();
+    this.masterGain = this.audioContext.createGain();
+    this.masterGain.gain.value = SILENT_VOLUME;
+    this.masterGain.connect(this.audioInput);
+
+    this.ensureSoundtrackSource();
+    this.listener.setMasterVolume(SILENT_VOLUME);
   }
 
-  setupSynthesizedAudio() {
-    // 1. Synthesize Ambient Space Pad (stereo noise + low pass filter)
-    const ambientBuffer = this.createAmbientBuffer();
-    this.ambientSound.setBuffer(ambientBuffer);
-    this.ambientSound.setLoop(true);
-    this.ambientSound.setVolume(0.2);
-
-    // 2. Synthesize Earth Hum (Positional)
-    const humBuffer = this.createHumBuffer();
-    this.earthHum.setBuffer(humBuffer);
-    this.earthHum.setRefDistance(3);
-    this.earthHum.setMaxDistance(15);
-    this.earthHum.setLoop(true);
-    this.earthHum.setVolume(1.0);
-  }
-
-  createAmbientBuffer() {
-    const sampleRate = this.audioContext.sampleRate;
-    const length = sampleRate * 4; // 4 seconds
-    const buffer = this.audioContext.createBuffer(2, length, sampleRate);
-    
-    for (let c = 0; c < 2; c++) {
-      const data = buffer.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        // Soft white noise
-        let noise = (Math.random() * 2 - 1) * 0.05;
-        // Add some slow floating sine waves
-        let wave1 = Math.sin(i * 100 * Math.PI * 2 / sampleRate) * 0.05;
-        let wave2 = Math.sin(i * 150 * Math.PI * 2 / sampleRate) * 0.05;
-        data[i] = noise + wave1 + wave2;
-      }
+  getListenerInput() {
+    if (typeof this.listener.getInput === "function") {
+      return this.listener.getInput();
     }
-    return buffer;
+
+    return this.audioContext.destination;
   }
 
-  createHumBuffer() {
-    const sampleRate = this.audioContext.sampleRate;
-    const length = sampleRate * 2; // 2 seconds
-    const buffer = this.audioContext.createBuffer(1, length, sampleRate);
-    const data = buffer.getChannelData(0);
-    
-    for (let i = 0; i < length; i++) {
-      // Sub-bass rumble ~ 50Hz
-      let sub = Math.sin(i * 50 * Math.PI * 2 / sampleRate);
-      data[i] = sub * 0.8;
+  createSoundtrackElement() {
+    const audio = document.createElement("audio");
+    audio.src = SOUNDTRACK_URL;
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.playsInline = true;
+    audio.crossOrigin = "anonymous";
+    return audio;
+  }
+
+  ensureSoundtrackSource() {
+    if (this.soundtrackSource) {
+      return;
     }
-    return buffer;
+
+    this.soundtrackSource = this.audioContext.createMediaElementSource(
+      this.soundtrack,
+    );
+    this.soundtrackSource.connect(this.masterGain);
+  }
+
+  ensureAudioContext() {
+    if (this.audioContext.state === "suspended") {
+      this.audioContext.resume();
+    }
+  }
+
+  setVolume(volume) {
+    this.masterGain.gain.setValueAtTime(volume, this.audioContext.currentTime);
+    this.listener.setMasterVolume(volume);
+  }
+
+  handlePlaybackError(error) {
+    console.error("Không phát được soundtrack:", error);
+    this.hasPlaybackStarted = false;
+    this.isAudioEnabled = false;
+    this.setVolume(SILENT_VOLUME);
+  }
+
+  startPlayback() {
+    const playPromise = this.soundtrack.play();
+
+    if (typeof playPromise?.catch === "function") {
+      playPromise.catch((error) => this.handlePlaybackError(error));
+    }
   }
 
   toggleMute() {
-    if (!this.isAudioEnabled) {
-      // Browsers require a gesture to start AudioContext
-      if (this.audioContext.state === 'suspended') {
-        this.audioContext.resume();
-      }
-      this.ambientSound.play();
-      this.earthHum.play();
+    this.ensureAudioContext();
+
+    if (!this.hasPlaybackStarted) {
+      this.hasPlaybackStarted = true;
       this.isAudioEnabled = true;
-    } else {
-      const masterVolume = this.listener.getMasterVolume();
-      this.listener.setMasterVolume(masterVolume === 0 ? 1 : 0);
+      this.setVolume(DEFAULT_MASTER_VOLUME);
+      this.startPlayback();
+      return true;
     }
-    return this.listener.getMasterVolume() > 0 && this.isAudioEnabled;
+
+    const nextEnabled = !this.isAudioEnabled;
+    this.isAudioEnabled = nextEnabled;
+    this.setVolume(nextEnabled ? DEFAULT_MASTER_VOLUME : SILENT_VOLUME);
+
+    if (nextEnabled && this.soundtrack.paused) {
+      this.startPlayback();
+    }
+
+    return this.isAudioEnabled;
   }
 }

@@ -22,7 +22,6 @@ export class UI {
     this.issToggleBtn = document.getElementById("iss-toggle");
     this.muteBtn = document.getElementById("mute-btn");
     this.markersToggleBtn = document.getElementById("markers-toggle");
-    this.bumpToggleBtn = document.getElementById("bump-toggle");
     this.cloudsToggleBtn = document.getElementById("clouds-toggle");
     this.atmosphereToggleBtn = document.getElementById("atmosphere-toggle");
     this.locationPopup = document.getElementById("location-popup");
@@ -34,7 +33,6 @@ export class UI {
     this.onISSToggle = null;
     this.onMuteToggle = null;
     this.onMarkersToggle = null;
-    this.onBumpToggle = null;
     this.onCloudsToggle = null;
     this.onAtmosphereToggle = null;
     this.onSunPresetChange = null;
@@ -85,10 +83,6 @@ export class UI {
       this.onMarkersToggle?.();
     });
 
-    this.bumpToggleBtn?.addEventListener("click", () => {
-      this.onBumpToggle?.();
-    });
-
     this.cloudsToggleBtn?.addEventListener("click", () => {
       this.onCloudsToggle?.();
     });
@@ -101,6 +95,7 @@ export class UI {
       this.setControlsCollapsed(!this.controlsCollapsed);
     });
 
+    this.setMarkersToggleText(false);
     this.setSunPreset(this.sunPreset);
   }
 
@@ -159,14 +154,6 @@ export class UI {
       this.markersToggleBtn.textContent = isVisible
         ? "📍 Ẩn địa danh"
         : "📍 Hiện địa danh";
-    }
-  }
-
-  setBumpToggleText(isEnabled) {
-    if (this.bumpToggleBtn) {
-      this.bumpToggleBtn.textContent = isEnabled
-        ? "🗺️ Tắt bump"
-        : "🗺️ Bật bump";
     }
   }
 
