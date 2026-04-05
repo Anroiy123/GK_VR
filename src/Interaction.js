@@ -1,13 +1,14 @@
 import * as THREE from "three";
 
 export class Interaction {
-  constructor(camera, scene, renderer, markersObj, ui) {
+  constructor(camera, scene, renderer, markersObj, ui, audioManager = null) {
     this.camera = camera;
     this.scene = scene;
     this.renderer = renderer;
     this.markersObj = markersObj;
     this.markersList = markersObj.markersList;
     this.ui = ui;
+    this.audioManager = audioManager;
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -49,6 +50,10 @@ export class Interaction {
     this.setupVRControllers();
     this.setupVRControlPanel();
     this.setupVRInputDebugOverlay();
+  }
+
+  setAudioManager(audioManager) {
+    this.audioManager = audioManager;
   }
 
   setupVRInputDebugOverlay() {
@@ -709,6 +714,7 @@ export class Interaction {
     // B Button (Index 5 / 1) dùng để bật/tắt bảng điều khiển
     if (justPressedB && this.vrPanel) {
       this.vrPanel.visible = !this.vrPanel.visible;
+      this.audioManager?.playPanelToggle(this.vrPanel.visible);
       this.lastVRClickTarget = this.vrPanel.visible
         ? "panel-shown"
         : "panel-hidden";
@@ -769,6 +775,7 @@ export class Interaction {
 
     this.selectedMarker = marker;
     this.markersObj.setMarkerSelected(marker, true);
+    this.audioManager?.playMarkerSelect();
 
     if (this.isVR) {
       this.ui.hideLocationPopup();

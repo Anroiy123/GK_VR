@@ -45,6 +45,7 @@ export class SceneManager {
     this.currentSunPreset = DEFAULT_SUN_PRESET;
     this.ambientLight = null;
     this.activeCameraWorldPosition = new THREE.Vector3();
+    this.handleFirstUserAudioGesture = null;
 
     this.earth = new Earth();
     this.clouds = new Clouds();
@@ -62,6 +63,7 @@ export class SceneManager {
       this.renderer,
       this.markers,
       this.ui,
+      null,
     );
     this.controls = new Controls(this.camera, this.renderer.domElement);
 
@@ -72,12 +74,14 @@ export class SceneManager {
       const isTracking = !this.controls.isTracking;
       this.controls.setTracking(isTracking ? this.satellite.group : null);
       this.ui.setISSToggleText(isTracking);
+      this.audioManager?.playUiPress(isTracking ? "success" : "back");
     };
 
     this.ui.onMuteToggle = () => {
       if (this.audioManager) {
         const isAudible = this.audioManager.toggleMute();
         this.ui.setMuteBtnText(isAudible);
+        this.audioManager.playUiPress(isAudible ? "success" : "back");
       }
     };
 
@@ -85,20 +89,36 @@ export class SceneManager {
       const isVisible = this.markers.toggleVisibility();
       this.interaction.clearSelection();
       this.ui.setMarkersToggleText(isVisible);
+      this.audioManager?.playUiPress(isVisible ? "success" : "back");
     };
 
     this.ui.onCloudsToggle = () => {
       const isVisible = this.clouds.toggleVisibility();
       this.ui.setCloudsToggleText(isVisible);
+      this.audioManager?.playUiPress(isVisible ? "success" : "back");
     };
 
     this.ui.onAtmosphereToggle = () => {
       const isVisible = this.atmosphere.toggleVisibility();
       this.ui.setAtmosphereToggleText(isVisible);
+      this.audioManager?.playUiPress(isVisible ? "success" : "back");
     };
 
     this.ui.onSunPresetChange = (presetId) => {
       this.applySunPreset(getSunPreset(presetId));
+      this.audioManager?.playUiPress("default");
+    };
+
+    this.ui.onControlsToggle = (isCollapsed) => {
+      this.audioManager?.playPanelToggle(!isCollapsed);
+    };
+
+    this.ui.onSpeedChange = () => {
+      this.audioManager?.playUiPress("default");
+    };
+
+    this.ui.onSunlightChange = () => {
+      this.audioManager?.playUiPress("default");
     };
 
     this.webxr.onSessionStart = () => {
@@ -108,6 +128,7 @@ export class SceneManager {
       this.interaction.setVRMode(true);
       this.sun.setVRMode(true);
       this.interaction.clearSelection();
+      this.audioManager?.playVrTransition(true);
     };
     this.webxr.onSessionEnd = () => {
       this.controls.setEnabled(true);
@@ -116,6 +137,7 @@ export class SceneManager {
       this.interaction.setVRMode(false);
       this.sun.setVRMode(false);
       this.interaction.clearSelection();
+      this.audioManager?.playVrTransition(false);
     };
 
     window.addEventListener("resize", this.onResize.bind(this));
@@ -151,6 +173,8 @@ export class SceneManager {
 
     // Audio setup
     this.audioManager = new AudioManager(this.camera);
+    this.interaction.setAudioManager(this.audioManager);
+    this.setupAutoAudioStart();
 
     // Thêm markers vào earthMesh để quay cùng Trái Đất
     earthMesh.add(this.markers.group);
@@ -167,6 +191,38 @@ export class SceneManager {
     this.ui.setSunPreset(this.currentSunPreset.id);
 
     this.ui.hideLoading();
+  }
+
+  setupAutoAudioStart() {
+    if (!this.audioManager || this.handleFirstUserAudioGesture) {
+      return;
+    }
+
+    const cleanup = () => {
+      if (!this.handleFirstUserAudioGesture) {
+        return;
+      }
+
+      window.removeEventListener("pointerdown", this.handleFirstUserAudioGesture);
+      window.removeEventListener("touchstart", this.handleFirstUserAudioGesture);
+      window.removeEventListener("keydown", this.handleFirstUserAudioGesture);
+      this.handleFirstUserAudioGesture = null;
+    };
+
+    this.handleFirstUserAudioGesture = (event) => {
+      const target = event?.target;
+      if (target instanceof Element && target.closest("#mute-btn")) {
+        return;
+      }
+
+      const isAudible = this.audioManager.enableAudio();
+      this.ui.setMuteBtnText(isAudible);
+      cleanup();
+    };
+
+    window.addEventListener("pointerdown", this.handleFirstUserAudioGesture);
+    window.addEventListener("touchstart", this.handleFirstUserAudioGesture);
+    window.addEventListener("keydown", this.handleFirstUserAudioGesture);
   }
 
   applySunPreset(preset) {

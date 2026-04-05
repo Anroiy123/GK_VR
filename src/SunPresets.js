@@ -15,6 +15,7 @@ export const SUN_PRESET_OPTIONS = [
         noiseScale: 7.2,
         intensityBase: 1.08,
         intensityBoost: 1.02,
+        textureBlend: 0.0,
       },
       glow: {
         innerScale: 7.4,
@@ -75,6 +76,7 @@ export const SUN_PRESET_OPTIONS = [
         noiseScale: 6.9,
         intensityBase: 1.15,
         intensityBoost: 1.18,
+        textureBlend: 0.0,
       },
       glow: {
         innerScale: 7.2,
@@ -135,6 +137,7 @@ export const SUN_PRESET_OPTIONS = [
         noiseScale: 6.6,
         intensityBase: 1.2,
         intensityBoost: 1.3,
+        textureBlend: 0.82,
       },
       glow: {
         innerScale: 7.6,

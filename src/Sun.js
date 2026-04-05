@@ -2,9 +2,31 @@ import * as THREE from "three";
 import { SunShader } from "./SunShader.js";
 import { DEFAULT_SUN_PRESET } from "./SunPresets.js";
 
+const CINEMATIC_SUN_TEXTURE_PATH = "NewTextures/8k_sun.jpg";
 const MIN_SUNLIGHT_MULTIPLIER = 0.5;
 const MAX_SUNLIGHT_MULTIPLIER = 3;
 const DEFAULT_SUNLIGHT_MULTIPLIER = 1.4;
+
+async function loadCinematicSunTexture(textureLoader, maxAnisotropy = 1) {
+  const texture = await textureLoader.loadAsync(CINEMATIC_SUN_TEXTURE_PATH);
+  const { width = 0, height = 0 } = texture.image ?? {};
+  const isPowerOfTwoTexture =
+    THREE.MathUtils.isPowerOfTwo(width) &&
+    THREE.MathUtils.isPowerOfTwo(height);
+
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = maxAnisotropy;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = isPowerOfTwoTexture
+    ? THREE.LinearMipmapLinearFilter
+    : THREE.LinearFilter;
+  texture.generateMipmaps = isPowerOfTwoTexture;
+  texture.needsUpdate = true;
+
+  return texture;
+}
 
 function clampOpacity(value, min, max) {
   return THREE.MathUtils.clamp(value, min, max);
@@ -541,6 +563,7 @@ export class Sun {
     this.halo = null;
     this.hazeShell = null;
     this.outerGlow = null;
+    this.surfaceTexture = null;
     this.elapsedTime = 0;
     this.sunlightMultiplier = DEFAULT_SUNLIGHT_MULTIPLIER;
     this.viewDirection = new THREE.Vector3();
@@ -551,14 +574,14 @@ export class Sun {
   }
 
   async load(textureLoader, textureQuality = {}) {
-    void textureLoader;
-    void textureQuality;
+    const maxAnisotropy = textureQuality.maxAnisotropy ?? 1;
 
     const innerGlowTexture = createInnerGlowTexture();
     const coronaTexture = createCoronaTexture();
     const raysTexture = createRayBurstTexture();
     const haloTexture = createHaloTexture();
     const outerGlowTexture = createOuterGlowTexture();
+    this.surfaceTexture = await loadCinematicSunTexture(textureLoader, maxAnisotropy);
     const glowStrength = getGlowStrength(this.sunlightMultiplier);
     const { sun: sunConfig } = this.preset;
 
@@ -575,6 +598,8 @@ export class Sun {
     material.uniforms.coreBoost.value = sunConfig.surface.coreBoost;
     material.uniforms.rimPower.value = sunConfig.surface.rimPower;
     material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
+    material.uniforms.sunMap.value = this.surfaceTexture;
+    material.uniforms.textureBlend.value = sunConfig.surface.textureBlend ?? 0;
     material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
       sunConfig.surface,
@@ -700,6 +725,7 @@ export class Sun {
     this.mesh.material.uniforms.coreBoost.value = sunConfig.surface.coreBoost;
     this.mesh.material.uniforms.rimPower.value = sunConfig.surface.rimPower;
     this.mesh.material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
+    this.mesh.material.uniforms.textureBlend.value = sunConfig.surface.textureBlend ?? 0;
     this.mesh.material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
       sunConfig.surface,

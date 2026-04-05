@@ -36,6 +36,9 @@ export class UI {
     this.onCloudsToggle = null;
     this.onAtmosphereToggle = null;
     this.onSunPresetChange = null;
+    this.onControlsToggle = null;
+    this.onSpeedChange = null;
+    this.onSunlightChange = null;
 
     this.speedMultiplier = 1;
     this.sunlightMultiplier = 1.4;
@@ -50,6 +53,7 @@ export class UI {
       if (this.speedValueEl) {
         this.speedValueEl.textContent = `${this.speedMultiplier.toFixed(1)}x`;
       }
+      this.onSpeedChange?.(this.speedMultiplier);
     });
 
     this.sunlightSlider?.addEventListener("input", () => {
@@ -57,6 +61,7 @@ export class UI {
       if (this.sunlightValueEl) {
         this.sunlightValueEl.textContent = `${this.sunlightMultiplier.toFixed(1)}x`;
       }
+      this.onSunlightChange?.(this.sunlightMultiplier);
     });
 
     this.sunPresetButtons.forEach((button) => {
@@ -92,7 +97,9 @@ export class UI {
     });
 
     this.controlsToggleBtn?.addEventListener("click", () => {
-      this.setControlsCollapsed(!this.controlsCollapsed);
+      const nextCollapsed = !this.controlsCollapsed;
+      this.setControlsCollapsed(nextCollapsed);
+      this.onControlsToggle?.(nextCollapsed);
     });
 
     this.setMarkersToggleText(false);
@@ -201,6 +208,7 @@ export class UI {
     this.speedMultiplier = next;
     this.speedSlider.value = next.toFixed(1);
     this.speedValueEl.textContent = `${next.toFixed(1)}x`;
+    this.onSpeedChange?.(this.speedMultiplier);
   }
 
   adjustSunlight(delta) {
@@ -214,6 +222,7 @@ export class UI {
     this.sunlightMultiplier = next;
     this.sunlightSlider.value = next.toFixed(1);
     this.sunlightValueEl.textContent = `${next.toFixed(1)}x`;
+    this.onSunlightChange?.(this.sunlightMultiplier);
   }
 
   setControlsCollapsed(isCollapsed) {

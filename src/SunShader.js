@@ -2,11 +2,13 @@ import * as THREE from "three";
 
 export const SunShader = {
   uniforms: {
+    sunMap: { value: null },
     time: { value: 0 },
     intensity: { value: 1.4 },
     coreBoost: { value: 1.15 },
     rimPower: { value: 1.9 },
     noiseScale: { value: 6.5 },
+    textureBlend: { value: 0 },
   },
 
   vertexShader: `
@@ -21,11 +23,13 @@ export const SunShader = {
   `,
 
   fragmentShader: `
+    uniform sampler2D sunMap;
     uniform float time;
     uniform float intensity;
     uniform float coreBoost;
     uniform float rimPower;
     uniform float noiseScale;
+    uniform float textureBlend;
 
     varying vec2 vUv;
     varying vec3 vNormal;
@@ -86,6 +90,18 @@ export const SunShader = {
       vec3 whiteHot = vec3(1.0, 0.98, 0.9);
 
       vec3 plasmaColor = mix(deepGold, hotGold, clamp(surfacePulse, 0.0, 1.0));
+      vec2 textureUv = fract(vUv + vec2(
+        (swirl - 0.5) * 0.02,
+        (plasma - 0.5) * 0.014
+      ));
+      vec3 textureColor = texture2D(sunMap, textureUv).rgb;
+      float textureLuma = dot(textureColor, vec3(0.2126, 0.7152, 0.0722));
+      vec3 warmedTexture = mix(
+        textureColor * vec3(1.25, 1.0, 0.72),
+        vec3(textureLuma) * vec3(1.2, 0.96, 0.7),
+        0.3
+      );
+      plasmaColor = mix(plasmaColor, warmedTexture, clamp(textureBlend, 0.0, 1.0));
       vec3 coreColor = mix(plasmaColor, whiteHot, clamp(core * 0.95, 0.0, 1.0));
       vec3 color = coreColor * brightness;
       vec3 premultipliedColor = clamp(color, 0.0, 2.5) * discMask;
