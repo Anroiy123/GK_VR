@@ -16,7 +16,7 @@ import { Moon } from "./Moon.js";
 import { Atmosphere } from "./Atmosphere.js";
 import { MapOverlay } from "./MapOverlay.js";
 import { ClimateExplorer } from "./ClimateExplorer.js";
-import { SeasonExplorer } from "./SeasonExplorer.js";
+import { SeasonSystem } from "./SeasonSystem.js";
 import { DEFAULT_SUN_PRESET, getSunPreset } from "./SunPresets.js";
 
 const EARTH_RADIUS = 2;
@@ -61,11 +61,14 @@ export class SceneManager {
     this.activeCameraWorldPosition = new THREE.Vector3();
     this.handleFirstUserAudioGesture = null;
     this.audioManager = null;
+    this.seasonInitError = null;
 
     this.earthViewMode = DEFAULT_EARTH_VIEW_MODE;
     this.desktopEarthViewModeBeforeVR = DEFAULT_EARTH_VIEW_MODE;
     this.explorerMonthIndex = 0;
     this.selectedSeasonEventKey = null;
+    this.cameraViewStateBeforeSeason = null;
+    this.wasTrackingISSBeforeSeason = false;
     this.globeLayerState = {
       cloudsVisible: true,
       atmosphereVisible: true,
@@ -77,7 +80,7 @@ export class SceneManager {
     this.atmosphere = new Atmosphere();
     this.mapOverlay = new MapOverlay(EARTH_RADIUS);
     this.climateExplorer = new ClimateExplorer(EARTH_RADIUS);
-    this.seasonExplorer = new SeasonExplorer(EARTH_RADIUS);
+    this.seasonSystem = new SeasonSystem();
     this.starfield = new Starfield();
     this.sun = new Sun(1);
     this.moon = new Moon(0.5);
@@ -107,6 +110,10 @@ export class SceneManager {
     };
 
     this.ui.onISSToggle = () => {
+      if (this.isSeasonMode()) {
+        return;
+      }
+
       const isTracking = !this.controls.isTracking;
       this.controls.setTracking(isTracking ? this.satellite.group : null);
       this.ui.setISSToggleText(isTracking);
@@ -168,14 +175,14 @@ export class SceneManager {
       this.explorerMonthIndex = Math.min(11, Math.max(0, monthIndex));
       this.selectedSeasonEventKey = null;
       this.climateExplorer.setMonth(this.explorerMonthIndex);
-      this.seasonExplorer.setMonth(this.explorerMonthIndex);
-      this.seasonExplorer.setEvent(null);
+      this.seasonSystem.setMonth(this.explorerMonthIndex);
+      this.seasonSystem.setEvent(null);
       this.syncUiState();
       this.audioManager?.playUiPress("default");
     };
 
     this.ui.onSeasonEventSelect = (eventKey) => {
-      const seasonState = this.seasonExplorer.setEvent(eventKey);
+      const seasonState = this.seasonSystem.setEvent(eventKey);
       this.selectedSeasonEventKey = eventKey;
       this.explorerMonthIndex = seasonState.monthIndex;
       this.climateExplorer.setMonth(this.explorerMonthIndex);
@@ -250,6 +257,12 @@ export class SceneManager {
         this.sun.load(textureLoader, textureQuality),
       ]);
 
+    try {
+      await this.seasonSystem.init(textureLoader, textureQuality);
+    } catch (error) {
+      this.seasonInitError = error instanceof Error ? error.message : String(error);
+    }
+
     const atmosphereMesh = this.atmosphere.create(this.camera);
     this.applySunPreset(this.currentSunPreset);
 
@@ -258,10 +271,10 @@ export class SceneManager {
     earthMesh.add(atmosphereMesh);
     earthMesh.add(this.mapOverlay.group);
     earthMesh.add(this.climateExplorer.group);
-    earthMesh.add(this.seasonExplorer.group);
     this.scene.add(sunGroup);
     this.scene.add(moonGroup);
     this.scene.add(stars);
+    this.scene.add(this.seasonSystem.root);
 
     this.audioManager = new AudioManager(this.camera);
     this.interaction.setAudioManager(this.audioManager);
@@ -275,7 +288,7 @@ export class SceneManager {
 
     this.ui.setMonthLabels(this.climateExplorer.metadata.months);
     this.climateExplorer.setMonth(this.explorerMonthIndex);
-    this.seasonExplorer.setMonth(this.explorerMonthIndex);
+    this.seasonSystem.setMonth(this.explorerMonthIndex);
     this.climateInitPromise = this.climateExplorer
       .init(textureLoader)
       .then(() => {
@@ -348,6 +361,7 @@ export class SceneManager {
     this.renderer.toneMappingExposure = this.currentSunPreset.toneMappingExposure;
     this.sun.applyPreset(this.currentSunPreset);
     this.atmosphere.applyPreset(this.currentSunPreset);
+    this.seasonSystem.applySunPreset(this.currentSunPreset);
 
     if (this.ambientLight) {
       this.ambientLight.intensity = this.currentSunPreset.ambientIntensity;
@@ -360,18 +374,111 @@ export class SceneManager {
     this.markers.setVisible(this.globeLayerState.markersVisible);
   }
 
+  setStarfieldDimmed(isDimmed) {
+    const opacityFactor = isDimmed ? 0.32 : 1;
+
+    this.starfield.group?.traverse((child) => {
+      if (!child.material || typeof child.material.opacity !== "number") {
+        return;
+      }
+
+      if (typeof child.userData.baseOpacity !== "number") {
+        child.userData.baseOpacity = child.material.opacity;
+      }
+
+      child.material.opacity = child.userData.baseOpacity * opacityFactor;
+      child.material.needsUpdate = true;
+    });
+  }
+
+  setPrimarySceneVisible(isVisible) {
+    if (this.earth.mesh) {
+      this.earth.mesh.visible = isVisible;
+    }
+
+    if (this.sun.group) {
+      this.sun.group.visible = isVisible;
+    }
+
+    if (this.moon.group) {
+      this.moon.group.visible = isVisible;
+    }
+
+    this.satellite.orbitGroup.visible = isVisible;
+    this.markers.vrOverlayGroup.visible = isVisible && this.markers.isVisible;
+  }
+
+  enterSeasonScene() {
+    if (!this.cameraViewStateBeforeSeason) {
+      this.cameraViewStateBeforeSeason = this.controls.saveViewState();
+      this.wasTrackingISSBeforeSeason = this.controls.isTracking;
+    }
+
+    if (this.controls.isTracking) {
+      this.controls.setTracking(null);
+      this.ui.setISSToggleText(false);
+    }
+
+    this.interaction.clearSelection();
+    this.ui.hideLocationPopup();
+    if (this.seasonSystem.isReady) {
+      this.setPrimarySceneVisible(false);
+      this.setStarfieldDimmed(true);
+      this.markers.setVisible(false);
+      this.clouds.setVisible(false);
+      this.atmosphere.setVisible(false);
+      this.mapOverlay.setVisible(false);
+      this.climateExplorer.setVisible(false);
+      this.seasonSystem.setMonth(this.explorerMonthIndex);
+      this.seasonSystem.setEvent(this.selectedSeasonEventKey);
+      this.seasonSystem.setVisible(true);
+      this.seasonSystem.applyCameraPreset(this.camera, this.controls);
+    }
+  }
+
+  exitSeasonScene(nextMode) {
+    this.seasonSystem.setVisible(false);
+    this.setPrimarySceneVisible(true);
+    this.setStarfieldDimmed(false);
+
+    if (
+      this.wasTrackingISSBeforeSeason &&
+      nextMode === DEFAULT_EARTH_VIEW_MODE
+    ) {
+      this.controls.setTracking(this.satellite.group);
+      this.ui.setISSToggleText(true);
+    } else {
+      this.controls.restoreViewState(this.cameraViewStateBeforeSeason);
+      this.ui.setISSToggleText(false);
+    }
+
+    this.cameraViewStateBeforeSeason = null;
+    this.wasTrackingISSBeforeSeason = false;
+  }
+
   setEarthViewMode(mode) {
     const nextMode = this.normalizeEarthViewMode(mode);
+    const wasSeasonMode = this.isSeasonMode(this.earthViewMode);
+    const willSeasonMode = this.isSeasonMode(nextMode);
+
+    if (!wasSeasonMode && willSeasonMode) {
+      this.enterSeasonScene();
+    } else if (wasSeasonMode && !willSeasonMode) {
+      this.exitSeasonScene(nextMode);
+    }
+
     this.earthViewMode = nextMode;
 
     if (nextMode === DEFAULT_EARTH_VIEW_MODE) {
       this.mapOverlay.setVisible(false);
       this.climateExplorer.setVisible(false);
-      this.seasonExplorer.setVisible(false);
+      this.seasonSystem.setVisible(false);
+      this.setPrimarySceneVisible(true);
       this.applyGlobeLayerState();
     } else if (nextMode === "coordinates") {
       this.climateExplorer.setVisible(false);
-      this.seasonExplorer.setVisible(false);
+      this.seasonSystem.setVisible(false);
+      this.setPrimarySceneVisible(true);
       this.mapOverlay.setVisible(true);
       this.clouds.setVisible(false);
       this.atmosphere.setVisible(false);
@@ -382,12 +489,17 @@ export class SceneManager {
       this.clouds.setVisible(false);
       this.atmosphere.setVisible(false);
       this.markers.setVisible(false);
-      this.seasonExplorer.setMonth(this.explorerMonthIndex);
-      this.seasonExplorer.setEvent(this.selectedSeasonEventKey);
-      this.seasonExplorer.setVisible(true);
+      if (this.seasonSystem.isReady) {
+        this.seasonSystem.setMonth(this.explorerMonthIndex);
+        this.seasonSystem.setEvent(this.selectedSeasonEventKey);
+        this.seasonSystem.setVisible(true);
+      } else {
+        this.setPrimarySceneVisible(true);
+      }
     } else {
       this.mapOverlay.setVisible(false);
-      this.seasonExplorer.setVisible(false);
+      this.seasonSystem.setVisible(false);
+      this.setPrimarySceneVisible(true);
       this.clouds.setVisible(false);
       this.atmosphere.setVisible(false);
       this.markers.setVisible(false);
@@ -451,7 +563,23 @@ export class SceneManager {
       return;
     }
 
-    this.ui.showSeasonPanel(this.seasonExplorer.getSeasonState());
+    if (this.seasonInitError) {
+      this.ui.showSeasonStatus(
+        "Seasons Mode",
+        `Không thể tải mô hình quỹ đạo mùa vụ: ${this.seasonInitError}`,
+      );
+      return;
+    }
+
+    if (!this.seasonSystem.isReady) {
+      this.ui.showSeasonStatus(
+        "Seasons Mode",
+        "Đang chuẩn bị mô hình Sun-Earth cho mô phỏng mùa vụ.",
+      );
+      return;
+    }
+
+    this.ui.showSeasonPanel(this.seasonSystem.getSeasonState());
   }
 
   syncUiState() {
@@ -595,7 +723,8 @@ export class SceneManager {
     this.atmosphere.update(this.activeCameraWorldPosition, sunPos);
     this.mapOverlay.update(activeCamera);
     this.climateExplorer.update(activeCamera);
-    this.seasonExplorer.update(activeCamera);
+    this.seasonSystem.setSunlightMultiplier(this.ui.sunlightMultiplier);
+    this.seasonSystem.update(delta, activeCamera);
     this.markers.update(timestamp, activeCamera);
     this.interaction.update();
     this.satellite.update(delta, speed);

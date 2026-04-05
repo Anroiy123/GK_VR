@@ -528,13 +528,47 @@ export class UI {
     this.seasonPanelTitle.textContent =
       seasonState.stateLabel ?? seasonState.eventLabel;
     this.seasonPanelStatus.textContent =
-      `${seasonState.monthLabel} | Điểm Mặt Trời đứng bóng tại ${seasonState.subsolarLatitudeLabel}.`;
+      `${seasonState.monthLabel} | Quan sát trực tiếp Trái Đất nghiêng quanh Mặt Trời trong scene 3D.`;
     this.seasonPanelDate.textContent = seasonState.eventDateLabel;
     this.seasonPanelSubsolar.textContent = seasonState.subsolarLatitudeLabel;
     this.seasonPanelTilt.textContent = `${seasonState.axialTiltDeg.toFixed(2)}°`;
     this.seasonPanelHemisphere.textContent = seasonState.dominantHemisphere;
     this.seasonPanelSummary.textContent = seasonState.summary;
-    this.updateSeasonOrbit(seasonState);
+
+    if (this.seasonOrbitInset) {
+      this.seasonOrbitInset.hidden = true;
+    }
+  }
+
+  showSeasonStatus(title, message) {
+    if (
+      !this.seasonPanel ||
+      !this.seasonPanelTitle ||
+      !this.seasonPanelStatus ||
+      !this.seasonPanelDate ||
+      !this.seasonPanelSubsolar ||
+      !this.seasonPanelTilt ||
+      !this.seasonPanelHemisphere ||
+      !this.seasonPanelSummary ||
+      !this.seasonPanelKicker
+    ) {
+      return;
+    }
+
+    this.seasonPanel.hidden = false;
+    this.seasonPanelKicker.textContent = "Khám phá mùa";
+    this.seasonPanelTitle.textContent = title;
+    this.seasonPanelStatus.textContent = message;
+    this.seasonPanelDate.textContent = "--";
+    this.seasonPanelSubsolar.textContent = "--";
+    this.seasonPanelTilt.textContent = "23.44°";
+    this.seasonPanelHemisphere.textContent = "--";
+    this.seasonPanelSummary.textContent =
+      "Mode này cần mô hình Sun-Earth riêng để minh hoạ quỹ đạo theo tháng.";
+
+    if (this.seasonOrbitInset) {
+      this.seasonOrbitInset.hidden = true;
+    }
   }
 
   hideSeasonPanel() {

@@ -23,6 +23,36 @@ export class Controls {
     this.orbit.enabled = enabled;
   }
 
+  setView(position, target) {
+    if (position) {
+      this.camera.position.copy(position);
+    }
+
+    if (target) {
+      this.orbit.target.copy(target);
+    }
+
+    this.camera.lookAt(this.orbit.target);
+    this.orbit.update();
+  }
+
+  saveViewState() {
+    return {
+      position: this.camera.position.clone(),
+      target: this.orbit.target.clone(),
+      enabled: this.orbit.enabled,
+    };
+  }
+
+  restoreViewState(viewState) {
+    if (!viewState) {
+      return;
+    }
+
+    this.setView(viewState.position, viewState.target);
+    this.setEnabled(viewState.enabled ?? true);
+  }
+
   setTracking(target) {
     if (target) {
       this.isTracking = true;
