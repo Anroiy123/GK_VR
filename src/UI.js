@@ -24,6 +24,7 @@ export class UI {
     this.markersToggleBtn = document.getElementById("markers-toggle");
     this.cloudsToggleBtn = document.getElementById("clouds-toggle");
     this.atmosphereToggleBtn = document.getElementById("atmosphere-toggle");
+    this.mapModeToggleBtn = document.getElementById("map-mode-toggle");
     this.locationPopup = document.getElementById("location-popup");
     this.locationPopupTitle = document.getElementById("location-popup-title");
     this.locationPopupDesc = document.getElementById("location-popup-desc");
@@ -35,6 +36,7 @@ export class UI {
     this.onMarkersToggle = null;
     this.onCloudsToggle = null;
     this.onAtmosphereToggle = null;
+    this.onMapModeToggle = null;
     this.onSunPresetChange = null;
     this.onControlsToggle = null;
     this.onSpeedChange = null;
@@ -96,6 +98,10 @@ export class UI {
       this.onAtmosphereToggle?.();
     });
 
+    this.mapModeToggleBtn?.addEventListener("click", () => {
+      this.onMapModeToggle?.();
+    });
+
     this.controlsToggleBtn?.addEventListener("click", () => {
       const nextCollapsed = !this.controlsCollapsed;
       this.setControlsCollapsed(nextCollapsed);
@@ -103,6 +109,8 @@ export class UI {
     });
 
     this.setMarkersToggleText(false);
+    this.setMapModeToggleText(false);
+    this.setLayerLockState(false);
     this.setSunPreset(this.sunPreset);
   }
 
@@ -178,6 +186,26 @@ export class UI {
         ? "🌫️ Tắt khí quyển"
         : "🌫️ Bật khí quyển";
     }
+  }
+
+  setMapModeToggleText(isEnabled) {
+    if (this.mapModeToggleBtn) {
+      this.mapModeToggleBtn.textContent = isEnabled
+        ? "🗺️ Tắt chế độ bản đồ"
+        : "🗺️ Bật chế độ bản đồ";
+    }
+  }
+
+  setLayerLockState(isLocked) {
+    [this.cloudsToggleBtn, this.atmosphereToggleBtn].forEach((button) => {
+      if (!button) {
+        return;
+      }
+
+      button.disabled = isLocked;
+      button.classList.toggle("is-locked", isLocked);
+      button.setAttribute("aria-disabled", String(isLocked));
+    });
   }
 
   setSunPreset(presetId) {

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { latLonToVector3 } from "./GeoMath.js";
 
 function buildPhotoUrls(keywords, lockBase) {
   const keywordPath = encodeURIComponent(keywords.join(",")).replaceAll(
@@ -159,7 +160,7 @@ export class Markers {
       const landmark = this.createLandmark(location);
       markerGroup.add(landmark.group);
 
-      const basePosition = this.latLonToVector3(
+      const basePosition = latLonToVector3(
         location.lat,
         location.lon,
         this.earthRadius,
@@ -524,17 +525,6 @@ export class Markers {
       materials: [baseMaterial, frameMaterial, roofMaterial],
       height: 0.26,
     };
-  }
-
-  latLonToVector3(lat, lon, radius) {
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lon + 180) * (Math.PI / 180);
-
-    const x = -(radius * Math.sin(phi) * Math.cos(theta));
-    const z = radius * Math.sin(phi) * Math.sin(theta);
-    const y = radius * Math.cos(phi);
-
-    return new THREE.Vector3(x, y, z);
   }
 
   createTextSprite(text, fontSize) {

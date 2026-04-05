@@ -131,7 +131,7 @@ body {
 }
 
 #controls-toggle,
-#iss-toggle, #mute-btn, #markers-toggle, #clouds-toggle, #atmosphere-toggle {
+#iss-toggle, #mute-btn, #markers-toggle, #clouds-toggle, #atmosphere-toggle, #map-mode-toggle {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
@@ -146,9 +146,21 @@ body {
 }
 
 #controls-toggle:hover,
-#iss-toggle:hover, #mute-btn:hover, #markers-toggle:hover, #clouds-toggle:hover, #atmosphere-toggle:hover {
+#iss-toggle:hover, #mute-btn:hover, #markers-toggle:hover, #clouds-toggle:hover, #atmosphere-toggle:hover, #map-mode-toggle:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(100, 180, 255, 0.45);
+}
+
+#controls-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+#controls-panel button:disabled:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 #controls-panel label {

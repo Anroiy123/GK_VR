@@ -14,7 +14,10 @@ import { CelestialCalculator } from "./CelestialCalculator.js";
 import { Sun } from "./Sun.js";
 import { Moon } from "./Moon.js";
 import { Atmosphere } from "./Atmosphere.js";
+import { MapOverlay } from "./MapOverlay.js";
 import { DEFAULT_SUN_PRESET, getSunPreset } from "./SunPresets.js";
+
+const EARTH_RADIUS = 2;
 
 export class SceneManager {
   constructor(canvas) {
@@ -46,15 +49,21 @@ export class SceneManager {
     this.ambientLight = null;
     this.activeCameraWorldPosition = new THREE.Vector3();
     this.handleFirstUserAudioGesture = null;
+    this.mapModeEnabled = false;
+    this.mapModeLayerState = {
+      cloudsVisible: true,
+      atmosphereVisible: true,
+    };
 
     this.earth = new Earth();
     this.clouds = new Clouds();
     this.atmosphere = new Atmosphere();
+    this.mapOverlay = new MapOverlay(EARTH_RADIUS);
     this.starfield = new Starfield();
     this.sun = new Sun(1);
     this.moon = new Moon(0.5);
     this.simDate = new Date(); // Thời gian mô phỏng
-    this.markers = new Markers(2); // radius = 2
+    this.markers = new Markers(EARTH_RADIUS); // radius = 2
     this.satellite = new Satellite();
 
     this.interaction = new Interaction(
@@ -93,15 +102,28 @@ export class SceneManager {
     };
 
     this.ui.onCloudsToggle = () => {
+      if (this.mapModeEnabled) {
+        return;
+      }
+
       const isVisible = this.clouds.toggleVisibility();
       this.ui.setCloudsToggleText(isVisible);
       this.audioManager?.playUiPress(isVisible ? "success" : "back");
     };
 
     this.ui.onAtmosphereToggle = () => {
+      if (this.mapModeEnabled) {
+        return;
+      }
+
       const isVisible = this.atmosphere.toggleVisibility();
       this.ui.setAtmosphereToggleText(isVisible);
       this.audioManager?.playUiPress(isVisible ? "success" : "back");
+    };
+
+    this.ui.onMapModeToggle = () => {
+      const isEnabled = this.setMapModeEnabled(!this.mapModeEnabled);
+      this.audioManager?.playUiPress(isEnabled ? "success" : "back");
     };
 
     this.ui.onSunPresetChange = (presetId) => {
@@ -167,6 +189,7 @@ export class SceneManager {
     this.scene.add(earthMesh);
     earthMesh.add(cloudMesh);
     earthMesh.add(atmosphereMesh);
+    earthMesh.add(this.mapOverlay.group);
     this.scene.add(sunGroup);
     this.scene.add(moonGroup);
     this.scene.add(stars);
@@ -188,6 +211,8 @@ export class SceneManager {
     this.ui.setMarkersToggleText(this.markers.isVisible);
     this.ui.setCloudsToggleText(this.clouds.isVisible);
     this.ui.setAtmosphereToggleText(this.atmosphere.isVisible);
+    this.ui.setMapModeToggleText(this.mapModeEnabled);
+    this.ui.setLayerLockState(this.mapModeEnabled);
     this.ui.setSunPreset(this.currentSunPreset.id);
 
     this.ui.hideLoading();
@@ -235,6 +260,33 @@ export class SceneManager {
     if (this.ambientLight) {
       this.ambientLight.intensity = this.currentSunPreset.ambientIntensity;
     }
+  }
+
+  setMapModeEnabled(isEnabled) {
+    if (this.mapModeEnabled === isEnabled) {
+      return this.mapModeEnabled;
+    }
+
+    if (isEnabled) {
+      this.mapModeLayerState = {
+        cloudsVisible: this.clouds.isVisible,
+        atmosphereVisible: this.atmosphere.isVisible,
+      };
+      this.clouds.setVisible(false);
+      this.atmosphere.setVisible(false);
+      this.mapOverlay.setVisible(true);
+    } else {
+      this.clouds.setVisible(this.mapModeLayerState.cloudsVisible);
+      this.atmosphere.setVisible(this.mapModeLayerState.atmosphereVisible);
+      this.mapOverlay.setVisible(false);
+    }
+
+    this.mapModeEnabled = isEnabled;
+    this.ui.setCloudsToggleText(this.clouds.isVisible);
+    this.ui.setAtmosphereToggleText(this.atmosphere.isVisible);
+    this.ui.setMapModeToggleText(this.mapModeEnabled);
+    this.ui.setLayerLockState(this.mapModeEnabled);
+    return this.mapModeEnabled;
   }
 
   setupLighting() {
@@ -328,6 +380,7 @@ export class SceneManager {
       this.baseSunLightIntensity * this.ui.sunlightMultiplier;
     this.clouds.update(delta, speed, activeCameraDistance);
     this.atmosphere.update(this.activeCameraWorldPosition, sunPos);
+    this.mapOverlay.update(activeCamera);
     this.markers.update(timestamp, activeCamera);
     this.interaction.update();
     this.satellite.update(delta, speed);
