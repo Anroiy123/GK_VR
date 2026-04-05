@@ -162,8 +162,17 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.segmented-control--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.segmented-control--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .sun-preset-btn,
-.earth-view-btn {
+.earth-view-btn,
+.season-event-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.8);
@@ -181,7 +190,8 @@ body {
 }
 
 .sun-preset-btn:hover,
-.earth-view-btn:hover {
+.earth-view-btn:hover,
+.season-event-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(100, 180, 255, 0.35);
 }
@@ -189,7 +199,9 @@ body {
 .sun-preset-btn.active,
 .sun-preset-btn[aria-pressed="true"],
 .earth-view-btn.active,
-.earth-view-btn[aria-pressed="true"] {
+.earth-view-btn[aria-pressed="true"],
+.season-event-btn.active,
+.season-event-btn[aria-pressed="true"] {
   background: linear-gradient(
     180deg,
     rgba(116, 188, 255, 0.28),
@@ -302,6 +314,19 @@ body {
   gap: 6px;
 }
 
+#season-event-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.season-event-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(159, 208, 255, 0.7);
+}
+
 #climate-legend-title {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.82);
@@ -364,6 +389,83 @@ body {
   pointer-events: auto;
 }
 
+#season-orbit-inset,
+#season-panel {
+  position: fixed;
+  right: 16px;
+  z-index: 18;
+  width: min(360px, calc(100vw - 24px));
+  padding: 16px;
+  background: rgba(4, 9, 21, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(132, 188, 255, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+#season-orbit-inset {
+  top: 124px;
+}
+
+#season-orbit-inset svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 6px;
+}
+
+.season-orbit-path {
+  fill: none;
+  stroke: rgba(159, 208, 255, 0.35);
+  stroke-width: 2;
+}
+
+.season-sun {
+  fill: rgba(255, 217, 107, 0.9);
+  filter: drop-shadow(0 0 16px rgba(255, 200, 72, 0.34));
+}
+
+.season-orbit-label {
+  fill: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.season-orbit-node {
+  fill: rgba(255, 255, 255, 0.3);
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.5;
+}
+
+.season-orbit-node.is-active {
+  fill: #7fd0ff;
+  stroke: #f6fbff;
+}
+
+.season-orbit-earth-core {
+  fill: #5aa2ff;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.2;
+}
+
+.season-orbit-earth-axis {
+  stroke: #ffd28a;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.season-orbit-caption {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+#season-panel {
+  top: 456px;
+}
+
 .climate-panel-kicker {
   font-size: 11px;
   letter-spacing: 0.12em;
@@ -372,13 +474,15 @@ body {
   margin-bottom: 8px;
 }
 
-#climate-panel-title {
+#climate-panel-title,
+#season-panel-title {
   font-size: 24px;
   line-height: 1.1;
   margin-bottom: 10px;
 }
 
-#climate-panel-status {
+#climate-panel-status,
+#season-panel-status {
   font-size: 13px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.76);
@@ -510,11 +614,21 @@ body {
 }
 
 @media (max-width: 1120px) {
-  #climate-panel {
+  #climate-panel,
+  #season-panel,
+  #season-orbit-inset {
     top: auto;
-    bottom: 16px;
     right: 16px;
     width: min(360px, calc(100vw - 24px));
+  }
+
+  #season-panel,
+  #climate-panel {
+    bottom: 16px;
+  }
+
+  #season-orbit-inset {
+    bottom: 306px;
   }
 }
 
@@ -532,13 +646,16 @@ body {
   }
 
   #location-popup,
-  #climate-panel {
+  #climate-panel,
+  #season-panel,
+  #season-orbit-inset {
     width: min(320px, calc(100vw - 20px));
     padding: 12px;
   }
 
   #location-popup-title,
-  #climate-panel-title {
+  #climate-panel-title,
+  #season-panel-title {
     font-size: 20px;
   }
 
@@ -560,6 +677,8 @@ body.vr-active #ui-overlay,
 body.vr-active #help-panel,
 body.vr-active #controls-panel,
 body.vr-active #info-panel,
-body.vr-active #climate-panel {
+body.vr-active #climate-panel,
+body.vr-active #season-panel,
+body.vr-active #season-orbit-inset {
   display: none;
 }
