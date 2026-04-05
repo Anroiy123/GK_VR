@@ -251,7 +251,10 @@ body {
   font-family: inherit;
   font-size: 12px;
   text-align: left;
-  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    opacity 0.2s;
 }
 
 .action-grid {

@@ -1,188 +1,341 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VR Earth Simulation — Mô phỏng Trái Đất</title>
-    <meta name="description" content="Ứng dụng VR mô phỏng Trái Đất xoay quanh trục trong không gian 3D" />
+    <meta
+      name="description"
+      content="Ứng dụng VR mô phỏng Trái Đất xoay quanh trục trong không gian 3D"
+    />
     <link rel="stylesheet" href="/src/style.css" />
-</head>
-<body>
+  </head>
+  <body>
     <div id="loading-screen">
-        <div class="loader"></div>
-        <p>Đang tải mô phỏng...</p>
+      <div class="loader"></div>
+      <p>Đang tải mô phỏng...</p>
     </div>
 
     <div id="ui-overlay">
-        <div id="controls-panel">
-            <button id="controls-toggle" aria-expanded="true">◀ Ẩn bảng điều khiển</button>
-            <div id="controls-body">
-                <div class="panel-title">
-                    <h2>🌍 Trái Đất VR</h2>
-                    <p>Điều khiển nhanh các lớp hiển thị và mô phỏng.</p>
-                </div>
-                <div id="earth-view-control" class="control-group">
-                    <label>Chế độ xem</label>
-                    <div class="segmented-control segmented-control--5" role="group" aria-label="Chế độ xem địa cầu">
-                        <button type="button" class="earth-view-btn active" data-earth-view="globe" aria-pressed="true">Globe</button>
-                        <button type="button" class="earth-view-btn" data-earth-view="coordinates" aria-pressed="false">Tọa độ</button>
-                        <button type="button" class="earth-view-btn" data-earth-view="temperature" aria-pressed="false">Nhiệt độ</button>
-                        <button type="button" class="earth-view-btn" data-earth-view="rainfall" aria-pressed="false">Mưa</button>
-                        <button type="button" class="earth-view-btn" data-earth-view="seasons" aria-pressed="false">Mùa vụ</button>
-                    </div>
-                </div>
-                <div id="speed-control" class="control-group">
-                    <label for="speed-slider">Tốc độ quay</label>
-                    <div class="slider-row">
-                        <input type="range" id="speed-slider" min="0" max="5" step="0.1" value="1" />
-                        <span id="speed-value">1.0x</span>
-                    </div>
-                </div>
-                <div id="sunlight-control" class="control-group">
-                    <label for="sunlight-slider">Độ sáng mặt trời</label>
-                    <div class="slider-row">
-                        <input type="range" id="sunlight-slider" min="0.5" max="3" step="0.1" value="1.4" />
-                        <span id="sunlight-value">1.4x</span>
-                    </div>
-                </div>
-                <div id="climate-controls" class="control-group" hidden>
-                    <div class="climate-header-row">
-                        <label id="explorer-month-title" for="climate-month-slider">Tháng dữ liệu</label>
-                        <span id="climate-month-label">Tháng 1</span>
-                    </div>
-                    <input type="range" id="climate-month-slider" min="0" max="11" step="1" value="0" />
-                    <div id="climate-legend">
-                        <p id="climate-legend-title">Bản đồ khí hậu</p>
-                        <div id="climate-legend-bar"></div>
-                        <div class="climate-legend-scale">
-                            <span id="climate-legend-min">--</span>
-                            <span id="climate-legend-max">--</span>
-                        </div>
-                    </div>
-                    <div id="season-event-controls" hidden>
-                        <p class="season-event-title">Mốc nhanh</p>
-                        <div class="segmented-control segmented-control--2" role="group" aria-label="Mốc mùa vụ">
-                            <button type="button" class="season-event-btn" data-season-event="march-equinox" aria-pressed="false">Xuân phân</button>
-                            <button type="button" class="season-event-btn" data-season-event="june-solstice" aria-pressed="false">Hạ chí</button>
-                            <button type="button" class="season-event-btn" data-season-event="september-equinox" aria-pressed="false">Thu phân</button>
-                            <button type="button" class="season-event-btn" data-season-event="december-solstice" aria-pressed="false">Đông chí</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="action-grid">
-                    <button id="iss-toggle">🛰️ ISS View</button>
-                    <button id="mute-btn">🔇 Âm thanh</button>
-                    <button id="markers-toggle">📍 Hiện địa danh</button>
-                    <button id="clouds-toggle">☁️ Tắt mây</button>
-                    <button id="atmosphere-toggle">🌫️ Tắt khí quyển</button>
-                </div>
+      <div id="controls-panel">
+        <button id="controls-toggle" aria-expanded="true">
+          ◀ Ẩn bảng điều khiển
+        </button>
+        <div id="controls-body">
+          <div class="panel-title">
+            <h2>🌍 Trái Đất VR</h2>
+            <p>Điều khiển nhanh các lớp hiển thị và mô phỏng.</p>
+          </div>
+          <div id="earth-view-control" class="control-group">
+            <label>Chế độ xem</label>
+            <div
+              class="segmented-control segmented-control--5"
+              role="group"
+              aria-label="Chế độ xem địa cầu"
+            >
+              <button
+                type="button"
+                class="earth-view-btn active"
+                data-earth-view="globe"
+                aria-pressed="true"
+              >
+                Globe
+              </button>
+              <button
+                type="button"
+                class="earth-view-btn"
+                data-earth-view="coordinates"
+                aria-pressed="false"
+              >
+                Tọa độ
+              </button>
+              <button
+                type="button"
+                class="earth-view-btn"
+                data-earth-view="temperature"
+                aria-pressed="false"
+              >
+                Nhiệt độ
+              </button>
+              <button
+                type="button"
+                class="earth-view-btn"
+                data-earth-view="rainfall"
+                aria-pressed="false"
+              >
+                Mưa
+              </button>
+              <button
+                type="button"
+                class="earth-view-btn"
+                data-earth-view="seasons"
+                aria-pressed="false"
+              >
+                Mùa vụ
+              </button>
             </div>
+          </div>
+          <div id="speed-control" class="control-group">
+            <label for="speed-slider">Tốc độ quay</label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="speed-slider"
+                min="0"
+                max="5"
+                step="0.1"
+                value="1"
+              />
+              <span id="speed-value">1.0x</span>
+            </div>
+          </div>
+          <div id="sunlight-control" class="control-group">
+            <label for="sunlight-slider">Độ sáng mặt trời</label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="sunlight-slider"
+                min="0.5"
+                max="3"
+                step="0.1"
+                value="1.4"
+              />
+              <span id="sunlight-value">1.4x</span>
+            </div>
+          </div>
+          <div id="climate-controls" class="control-group" hidden>
+            <div class="climate-header-row">
+              <label id="explorer-month-title" for="climate-month-slider"
+                >Tháng dữ liệu</label
+              >
+              <span id="climate-month-label">Tháng 1</span>
+            </div>
+            <input
+              type="range"
+              id="climate-month-slider"
+              min="0"
+              max="11"
+              step="1"
+              value="0"
+            />
+            <div id="climate-legend">
+              <p id="climate-legend-title">Bản đồ khí hậu</p>
+              <div id="climate-legend-bar"></div>
+              <div class="climate-legend-scale">
+                <span id="climate-legend-min">--</span>
+                <span id="climate-legend-max">--</span>
+              </div>
+            </div>
+            <div id="season-event-controls" hidden>
+              <p class="season-event-title">Mốc nhanh</p>
+              <div
+                class="segmented-control segmented-control--2"
+                role="group"
+                aria-label="Mốc mùa vụ"
+              >
+                <button
+                  type="button"
+                  class="season-event-btn"
+                  data-season-event="march-equinox"
+                  aria-pressed="false"
+                >
+                  Xuân phân
+                </button>
+                <button
+                  type="button"
+                  class="season-event-btn"
+                  data-season-event="june-solstice"
+                  aria-pressed="false"
+                >
+                  Hạ chí
+                </button>
+                <button
+                  type="button"
+                  class="season-event-btn"
+                  data-season-event="september-equinox"
+                  aria-pressed="false"
+                >
+                  Thu phân
+                </button>
+                <button
+                  type="button"
+                  class="season-event-btn"
+                  data-season-event="december-solstice"
+                  aria-pressed="false"
+                >
+                  Đông chí
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="action-grid">
+            <button id="iss-toggle">🛰️ ISS View</button>
+            <button id="mute-btn">🔇 Âm thanh</button>
+            <button id="markers-toggle">📍 Hiện địa danh</button>
+            <button id="clouds-toggle">☁️ Tắt mây</button>
+            <button id="atmosphere-toggle">🌫️ Tắt khí quyển</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="info-panel">
+        <p class="info-kicker">Session</p>
+        <p id="fps-counter">FPS: --</p>
+        <p id="sim-time">Thời gian: --</p>
+        <p id="vr-status">VR: Chưa kết nối</p>
+      </div>
+
+      <div id="help-panel">
+        <p>🖱️ Kéo chuột để xoay | Scroll để zoom</p>
+        <p>🥽 Nhấn "Enter VR" để vào chế độ VR</p>
+      </div>
+
+      <div id="location-popup" hidden>
+        <div class="location-popup-header">
+          <p class="location-popup-kicker">Địa danh nổi bật</p>
+          <h3 id="location-popup-title"></h3>
+          <p id="location-popup-desc"></p>
+        </div>
+        <div id="location-popup-gallery"></div>
+      </div>
+
+      <aside id="climate-panel" hidden>
+        <p id="climate-panel-kicker" class="climate-panel-kicker">
+          Climate Explorer
+        </p>
+        <h3 id="climate-panel-title">Dữ liệu khí hậu</h3>
+        <p id="climate-panel-status">
+          Chọn một điểm trên Trái Đất để xem dữ liệu khí hậu.
+        </p>
+
+        <div id="climate-panel-sample" hidden>
+          <div class="climate-stat-grid">
+            <div class="climate-stat-card">
+              <span class="climate-stat-label">Vĩ độ</span>
+              <strong id="climate-probe-lat">--</strong>
+            </div>
+            <div class="climate-stat-card">
+              <span class="climate-stat-label">Kinh độ</span>
+              <strong id="climate-probe-lon">--</strong>
+            </div>
+            <div class="climate-stat-card">
+              <span class="climate-stat-label">Tháng</span>
+              <strong id="climate-probe-month">--</strong>
+            </div>
+            <div class="climate-stat-card">
+              <span class="climate-stat-label">Giá trị</span>
+              <strong id="climate-probe-value">--</strong>
+            </div>
+          </div>
+          <p
+            id="climate-probe-interpretation"
+            class="climate-probe-interpretation"
+          ></p>
         </div>
 
-        <div id="info-panel">
-            <p class="info-kicker">Session</p>
-            <p id="fps-counter">FPS: --</p>
-            <p id="sim-time">Thời gian: --</p>
-            <p id="vr-status">VR: Chưa kết nối</p>
+        <div id="climate-panel-insight" hidden>
+          <h4 id="climate-panel-insight-title"></h4>
+          <p id="climate-panel-insight-summary"></p>
+        </div>
+      </aside>
+
+      <aside id="season-orbit-inset" hidden>
+        <p class="climate-panel-kicker">Quỹ đạo mùa vụ</p>
+        <svg viewBox="0 0 280 280" aria-label="Minh hoạ quỹ đạo mùa vụ">
+          <circle class="season-orbit-path" cx="140" cy="140" r="96"></circle>
+          <circle class="season-sun" cx="140" cy="140" r="24"></circle>
+          <text class="season-orbit-label" x="140" y="34" text-anchor="middle">
+            Xuân phân
+          </text>
+          <text class="season-orbit-label" x="246" y="144" text-anchor="middle">
+            Đông chí
+          </text>
+          <text class="season-orbit-label" x="140" y="264" text-anchor="middle">
+            Thu phân
+          </text>
+          <text class="season-orbit-label" x="34" y="144" text-anchor="middle">
+            Hạ chí
+          </text>
+          <circle
+            class="season-orbit-node"
+            data-season-orbit-event="march-equinox"
+            cx="140"
+            cy="44"
+            r="6"
+          ></circle>
+          <circle
+            class="season-orbit-node"
+            data-season-orbit-event="june-solstice"
+            cx="44"
+            cy="140"
+            r="6"
+          ></circle>
+          <circle
+            class="season-orbit-node"
+            data-season-orbit-event="september-equinox"
+            cx="140"
+            cy="236"
+            r="6"
+          ></circle>
+          <circle
+            class="season-orbit-node"
+            data-season-orbit-event="december-solstice"
+            cx="236"
+            cy="140"
+            r="6"
+          ></circle>
+          <g id="season-orbit-earth" transform="translate(140 44)">
+            <circle
+              class="season-orbit-earth-core"
+              cx="0"
+              cy="0"
+              r="13"
+            ></circle>
+            <line
+              class="season-orbit-earth-axis"
+              x1="-6"
+              y1="18"
+              x2="6"
+              y2="-18"
+            ></line>
+          </g>
+        </svg>
+        <p id="season-orbit-caption" class="season-orbit-caption">
+          Xuân phân gần nhất | Gần cân bằng hai bán cầu
+        </p>
+      </aside>
+
+      <aside id="season-panel" hidden>
+        <p id="season-panel-kicker" class="climate-panel-kicker">
+          Khám phá mùa
+        </p>
+        <h3 id="season-panel-title">Xuân phân</h3>
+        <p id="season-panel-status">Hai bán cầu nhận bức xạ gần cân bằng.</p>
+
+        <div class="climate-stat-grid">
+          <div class="climate-stat-card">
+            <span class="climate-stat-label">Ngày mốc</span>
+            <strong id="season-panel-date">20/03/2026</strong>
+          </div>
+          <div class="climate-stat-card">
+            <span class="climate-stat-label">Điểm subsolar</span>
+            <strong id="season-panel-subsolar">0°</strong>
+          </div>
+          <div class="climate-stat-card">
+            <span class="climate-stat-label">Độ nghiêng trục</span>
+            <strong id="season-panel-tilt">23.44°</strong>
+          </div>
+          <div class="climate-stat-card">
+            <span class="climate-stat-label">Bán cầu ưu thế</span>
+            <strong id="season-panel-hemisphere">Gần cân bằng</strong>
+          </div>
         </div>
 
-        <div id="help-panel">
-            <p>🖱️ Kéo chuột để xoay | Scroll để zoom</p>
-            <p>🥽 Nhấn "Enter VR" để vào chế độ VR</p>
-        </div>
-
-        <div id="location-popup" hidden>
-            <div class="location-popup-header">
-                <p class="location-popup-kicker">Địa danh nổi bật</p>
-                <h3 id="location-popup-title"></h3>
-                <p id="location-popup-desc"></p>
-            </div>
-            <div id="location-popup-gallery"></div>
-        </div>
-
-        <aside id="climate-panel" hidden>
-            <p id="climate-panel-kicker" class="climate-panel-kicker">Climate Explorer</p>
-            <h3 id="climate-panel-title">Dữ liệu khí hậu</h3>
-            <p id="climate-panel-status">Chọn một điểm trên Trái Đất để xem dữ liệu khí hậu.</p>
-
-            <div id="climate-panel-sample" hidden>
-                <div class="climate-stat-grid">
-                    <div class="climate-stat-card">
-                        <span class="climate-stat-label">Vĩ độ</span>
-                        <strong id="climate-probe-lat">--</strong>
-                    </div>
-                    <div class="climate-stat-card">
-                        <span class="climate-stat-label">Kinh độ</span>
-                        <strong id="climate-probe-lon">--</strong>
-                    </div>
-                    <div class="climate-stat-card">
-                        <span class="climate-stat-label">Tháng</span>
-                        <strong id="climate-probe-month">--</strong>
-                    </div>
-                    <div class="climate-stat-card">
-                        <span class="climate-stat-label">Giá trị</span>
-                        <strong id="climate-probe-value">--</strong>
-                    </div>
-                </div>
-                <p id="climate-probe-interpretation" class="climate-probe-interpretation"></p>
-            </div>
-
-            <div id="climate-panel-insight" hidden>
-                <h4 id="climate-panel-insight-title"></h4>
-                <p id="climate-panel-insight-summary"></p>
-            </div>
-        </aside>
-
-        <aside id="season-orbit-inset" hidden>
-            <p class="climate-panel-kicker">Quỹ đạo mùa vụ</p>
-            <svg viewBox="0 0 280 280" aria-label="Minh hoạ quỹ đạo mùa vụ">
-                <circle class="season-orbit-path" cx="140" cy="140" r="96"></circle>
-                <circle class="season-sun" cx="140" cy="140" r="24"></circle>
-                <text class="season-orbit-label" x="140" y="34" text-anchor="middle">Xuân phân</text>
-                <text class="season-orbit-label" x="246" y="144" text-anchor="middle">Đông chí</text>
-                <text class="season-orbit-label" x="140" y="264" text-anchor="middle">Thu phân</text>
-                <text class="season-orbit-label" x="34" y="144" text-anchor="middle">Hạ chí</text>
-                <circle class="season-orbit-node" data-season-orbit-event="march-equinox" cx="140" cy="44" r="6"></circle>
-                <circle class="season-orbit-node" data-season-orbit-event="june-solstice" cx="44" cy="140" r="6"></circle>
-                <circle class="season-orbit-node" data-season-orbit-event="september-equinox" cx="140" cy="236" r="6"></circle>
-                <circle class="season-orbit-node" data-season-orbit-event="december-solstice" cx="236" cy="140" r="6"></circle>
-                <g id="season-orbit-earth" transform="translate(140 44)">
-                    <circle class="season-orbit-earth-core" cx="0" cy="0" r="13"></circle>
-                    <line class="season-orbit-earth-axis" x1="-6" y1="18" x2="6" y2="-18"></line>
-                </g>
-            </svg>
-            <p id="season-orbit-caption" class="season-orbit-caption">Xuân phân gần nhất | Gần cân bằng hai bán cầu</p>
-        </aside>
-
-        <aside id="season-panel" hidden>
-            <p id="season-panel-kicker" class="climate-panel-kicker">Khám phá mùa</p>
-            <h3 id="season-panel-title">Xuân phân</h3>
-            <p id="season-panel-status">Hai bán cầu nhận bức xạ gần cân bằng.</p>
-
-            <div class="climate-stat-grid">
-                <div class="climate-stat-card">
-                    <span class="climate-stat-label">Ngày mốc</span>
-                    <strong id="season-panel-date">20/03/2026</strong>
-                </div>
-                <div class="climate-stat-card">
-                    <span class="climate-stat-label">Điểm subsolar</span>
-                    <strong id="season-panel-subsolar">0°</strong>
-                </div>
-                <div class="climate-stat-card">
-                    <span class="climate-stat-label">Độ nghiêng trục</span>
-                    <strong id="season-panel-tilt">23.44°</strong>
-                </div>
-                <div class="climate-stat-card">
-                    <span class="climate-stat-label">Bán cầu ưu thế</span>
-                    <strong id="season-panel-hemisphere">Gần cân bằng</strong>
-                </div>
-            </div>
-
-            <p id="season-panel-summary" class="climate-probe-interpretation"></p>
-        </aside>
+        <p id="season-panel-summary" class="climate-probe-interpretation"></p>
+      </aside>
     </div>
 
     <canvas id="canvas"></canvas>
     <script type="module" src="/src/main.js"></script>
-</body>
+  </body>
 </html>

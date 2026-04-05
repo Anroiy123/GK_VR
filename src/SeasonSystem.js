@@ -27,8 +27,7 @@ async function loadSeasonSunTexture(textureLoader, maxAnisotropy = 1) {
   const texture = await textureLoader.loadAsync(SEASON_SUN_TEXTURE_PATH);
   const { width = 0, height = 0 } = texture.image ?? {};
   const isPowerOfTwoTexture =
-    THREE.MathUtils.isPowerOfTwo(width) &&
-    THREE.MathUtils.isPowerOfTwo(height);
+    THREE.MathUtils.isPowerOfTwo(width) && THREE.MathUtils.isPowerOfTwo(height);
 
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = maxAnisotropy;
@@ -114,11 +113,7 @@ function createOrbitRing(radius) {
   for (let index = 0; index < RING_SEGMENTS; index += 1) {
     const angle = (index / RING_SEGMENTS) * Math.PI * 2;
     points.push(
-      new THREE.Vector3(
-        Math.cos(angle) * radius,
-        0,
-        Math.sin(angle) * radius,
-      ),
+      new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius),
     );
   }
 
@@ -252,7 +247,12 @@ export class SeasonSystem {
     this.localSunDirection = new THREE.Vector3();
 
     this.axisHelper = createAxisHelper(EARTH_RADIUS + 1.25);
-    this.equatorLine = createLatitudeRing(EARTH_RADIUS + 0.02, 0, 0xbfe0ff, 0.72);
+    this.equatorLine = createLatitudeRing(
+      EARTH_RADIUS + 0.02,
+      0,
+      0xbfe0ff,
+      0.72,
+    );
     this.tropicCancerLine = createLatitudeRing(
       EARTH_RADIUS + 0.028,
       AXIS_TILT_DEG,
@@ -413,9 +413,9 @@ export class SeasonSystem {
       .normalize();
 
     this.subsolarMarker.position.copy(
-      this.localSunDirection.clone().multiplyScalar(
-        EARTH_RADIUS + MARKER_RADIUS_OFFSET,
-      ),
+      this.localSunDirection
+        .clone()
+        .multiplyScalar(EARTH_RADIUS + MARKER_RADIUS_OFFSET),
     );
     this.subsolarMarker.quaternion.setFromUnitVectors(
       new THREE.Vector3(0, 1, 0),
@@ -507,4 +507,3 @@ export class SeasonSystem {
     });
   }
 }
-
