@@ -1,37 +1,10 @@
 import * as THREE from "three";
 import { SunShader } from "./SunShader.js";
+import { DEFAULT_SUN_PRESET } from "./SunPresets.js";
 
 const MIN_SUNLIGHT_MULTIPLIER = 0.5;
 const MAX_SUNLIGHT_MULTIPLIER = 3;
 const DEFAULT_SUNLIGHT_MULTIPLIER = 1.4;
-
-const SUN_VISUALS = {
-  surface: {
-    coreBoost: 1.2,
-    rimPower: 1.75,
-    noiseScale: 6.8,
-  },
-  glow: {
-    innerScale: 6.8,
-    coronaScale: 9.6,
-    raysScale: 12.6,
-    haloScale: 17.8,
-    outerScale: 22.0,
-    innerOpacityBase: 0.88,
-    coronaOpacityBase: 0.58,
-    raysOpacityBase: 0.5,
-    haloOpacityBase: 0.34,
-    outerOpacityBase: 0.17,
-    innerOpacityBoost: 0.22,
-    coronaOpacityBoost: 0.22,
-    raysOpacityBoost: 0.24,
-    haloOpacityBoost: 0.36,
-    outerOpacityBoost: 0.24,
-    raysScaleBoost: 0.055,
-    haloScaleBoost: 0.04,
-    outerScaleBoost: 0.06,
-  },
-};
 
 function clampOpacity(value, min, max) {
   return THREE.MathUtils.clamp(value, min, max);
@@ -65,12 +38,18 @@ function getGlowScale(radius, baseScale, scaleBoost, glowStrength) {
   return radius * baseScale * (1 + scaleBoost * glowStrength);
 }
 
-function getSurfaceIntensity(multiplier) {
+function getSurfaceIntensity(multiplier, surfaceConfig) {
   const normalizedBrightness =
     (clampSunlightMultiplier(multiplier) - MIN_SUNLIGHT_MULTIPLIER) /
     (MAX_SUNLIGHT_MULTIPLIER - MIN_SUNLIGHT_MULTIPLIER);
 
-  return 1.18 + normalizedBrightness * 1.62;
+  return surfaceConfig.intensityBase + normalizedBrightness * surfaceConfig.intensityBoost;
+}
+
+function setSpriteScaleAndOpacity(sprite, scale, opacity) {
+  if (!sprite) return;
+  sprite.scale.setScalar(scale);
+  sprite.material.opacity = opacity;
 }
 
 function createRadialGlowTexture(colorStops) {
@@ -103,6 +82,8 @@ function createRadialGlowTexture(colorStops) {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.premultiplyAlpha = true;
+  texture.needsUpdate = true;
 
   return texture;
 }
@@ -208,6 +189,8 @@ function createRayBurstTexture() {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.premultiplyAlpha = true;
+  texture.needsUpdate = true;
 
   return texture;
 }
@@ -223,6 +206,7 @@ function createGlowSprite(texture, color, opacity, scale) {
     depthWrite: false,
     depthFunc: THREE.LessEqualDepth,
     toneMapped: false,
+    premultipliedAlpha: true,
   });
 
   const sprite = new THREE.Sprite(material);
@@ -233,7 +217,7 @@ function createGlowSprite(texture, color, opacity, scale) {
 }
 
 export class Sun {
-  constructor(radius = 1.5) {
+  constructor(radius = 1) {
     this.group = new THREE.Group();
     this.radius = radius;
     this.mesh = null;
@@ -245,6 +229,7 @@ export class Sun {
     this.elapsedTime = 0;
     this.sunlightMultiplier = DEFAULT_SUNLIGHT_MULTIPLIER;
     this.viewDirection = new THREE.Vector3();
+    this.preset = DEFAULT_SUN_PRESET;
   }
 
   async load(textureLoader, textureQuality = {}) {
@@ -257,6 +242,7 @@ export class Sun {
     const haloTexture = createHaloTexture();
     const outerGlowTexture = createOuterGlowTexture();
     const glowStrength = getGlowStrength(this.sunlightMultiplier);
+    const { sun: sunConfig } = this.preset;
 
     const geometry = new THREE.SphereGeometry(this.radius, 64, 64);
     const material = new THREE.ShaderMaterial({
@@ -265,12 +251,15 @@ export class Sun {
       uniforms: THREE.UniformsUtils.clone(SunShader.uniforms),
       toneMapped: false,
       transparent: true,
+      depthWrite: false,
+      premultipliedAlpha: true,
     });
-    material.uniforms.coreBoost.value = SUN_VISUALS.surface.coreBoost;
-    material.uniforms.rimPower.value = SUN_VISUALS.surface.rimPower;
-    material.uniforms.noiseScale.value = SUN_VISUALS.surface.noiseScale;
+    material.uniforms.coreBoost.value = sunConfig.surface.coreBoost;
+    material.uniforms.rimPower.value = sunConfig.surface.rimPower;
+    material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
     material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
+      sunConfig.surface,
     );
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -281,11 +270,11 @@ export class Sun {
       innerGlowTexture,
       0xfff6d4,
       getGlowOpacity(
-        SUN_VISUALS.glow.innerOpacityBase,
-        SUN_VISUALS.glow.innerOpacityBoost,
+        sunConfig.glow.innerOpacityBase,
+        sunConfig.glow.innerOpacityBoost,
         glowStrength,
       ),
-      this.radius * SUN_VISUALS.glow.innerScale,
+      this.radius * sunConfig.glow.innerScale,
     );
     this.group.add(this.innerGlow);
 
@@ -293,11 +282,11 @@ export class Sun {
       coronaTexture,
       0xfff2df,
       getGlowOpacity(
-        SUN_VISUALS.glow.coronaOpacityBase,
-        SUN_VISUALS.glow.coronaOpacityBoost,
+        sunConfig.glow.coronaOpacityBase,
+        sunConfig.glow.coronaOpacityBoost,
         glowStrength,
       ),
-      this.radius * SUN_VISUALS.glow.coronaScale,
+      this.radius * sunConfig.glow.coronaScale,
     );
     this.group.add(this.corona);
 
@@ -305,14 +294,14 @@ export class Sun {
       raysTexture,
       0xffde80,
       getGlowOpacity(
-        SUN_VISUALS.glow.raysOpacityBase,
-        SUN_VISUALS.glow.raysOpacityBoost,
+        sunConfig.glow.raysOpacityBase,
+        sunConfig.glow.raysOpacityBoost,
         glowStrength,
       ),
       getGlowScale(
         this.radius,
-        SUN_VISUALS.glow.raysScale,
-        SUN_VISUALS.glow.raysScaleBoost,
+        sunConfig.glow.raysScale,
+        sunConfig.glow.raysScaleBoost,
         glowStrength,
       ),
     );
@@ -322,14 +311,14 @@ export class Sun {
       haloTexture,
       0xfff0a6,
       getGlowOpacity(
-        SUN_VISUALS.glow.haloOpacityBase,
-        SUN_VISUALS.glow.haloOpacityBoost,
+        sunConfig.glow.haloOpacityBase,
+        sunConfig.glow.haloOpacityBoost,
         glowStrength,
       ),
       getGlowScale(
         this.radius,
-        SUN_VISUALS.glow.haloScale,
-        SUN_VISUALS.glow.haloScaleBoost,
+        sunConfig.glow.haloScale,
+        sunConfig.glow.haloScaleBoost,
         glowStrength,
       ),
     );
@@ -339,20 +328,124 @@ export class Sun {
       outerGlowTexture,
       0xffcd72,
       getGlowOpacity(
-        SUN_VISUALS.glow.outerOpacityBase,
-        SUN_VISUALS.glow.outerOpacityBoost,
+        sunConfig.glow.outerOpacityBase,
+        sunConfig.glow.outerOpacityBoost,
         glowStrength,
       ),
       getGlowScale(
         this.radius,
-        SUN_VISUALS.glow.outerScale,
-        SUN_VISUALS.glow.outerScaleBoost,
+        sunConfig.glow.outerScale,
+        sunConfig.glow.outerScaleBoost,
         glowStrength,
       ),
     );
     this.group.add(this.outerGlow);
+    this.applyPreset(this.preset);
 
     return this.group;
+  }
+
+  applyPreset(preset) {
+    this.preset = preset ?? DEFAULT_SUN_PRESET;
+
+    if (!this.mesh) return;
+
+    const { sun: sunConfig, visualRadius } = this.preset;
+
+    this.group.scale.setScalar(visualRadius);
+    this.mesh.material.uniforms.coreBoost.value = sunConfig.surface.coreBoost;
+    this.mesh.material.uniforms.rimPower.value = sunConfig.surface.rimPower;
+    this.mesh.material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
+    this.mesh.material.uniforms.intensity.value = getSurfaceIntensity(
+      this.sunlightMultiplier,
+      sunConfig.surface,
+    );
+
+    const glowStrength = getGlowStrength(this.sunlightMultiplier);
+    setSpriteScaleAndOpacity(
+      this.innerGlow,
+      this.radius * sunConfig.glow.innerScale,
+      clampOpacity(
+        getGlowOpacity(
+          sunConfig.glow.innerOpacityBase,
+          sunConfig.glow.innerOpacityBoost,
+          glowStrength,
+        ),
+        0,
+        sunConfig.opacityCaps.inner,
+      ),
+    );
+    setSpriteScaleAndOpacity(
+      this.corona,
+      this.radius * sunConfig.glow.coronaScale,
+      clampOpacity(
+        getGlowOpacity(
+          sunConfig.glow.coronaOpacityBase,
+          sunConfig.glow.coronaOpacityBoost,
+          glowStrength,
+        ),
+        0,
+        sunConfig.opacityCaps.corona,
+      ),
+    );
+    setSpriteScaleAndOpacity(
+      this.rays,
+      getGlowScale(
+        this.radius,
+        sunConfig.glow.raysScale,
+        sunConfig.glow.raysScaleBoost,
+        glowStrength,
+      ),
+      clampOpacity(
+        getGlowOpacity(
+          sunConfig.glow.raysOpacityBase,
+          sunConfig.glow.raysOpacityBoost,
+          glowStrength,
+        ),
+        0,
+        sunConfig.opacityCaps.rays,
+      ),
+    );
+    setSpriteScaleAndOpacity(
+      this.halo,
+      getGlowScale(
+        this.radius,
+        sunConfig.glow.haloScale,
+        sunConfig.glow.haloScaleBoost,
+        glowStrength,
+      ),
+      clampOpacity(
+        getGlowOpacity(
+          sunConfig.glow.haloOpacityBase,
+          sunConfig.glow.haloOpacityBoost,
+          glowStrength,
+        ),
+        0,
+        sunConfig.opacityCaps.halo,
+      ),
+    );
+    setSpriteScaleAndOpacity(
+      this.outerGlow,
+      getGlowScale(
+        this.radius,
+        sunConfig.glow.outerScale,
+        sunConfig.glow.outerScaleBoost,
+        glowStrength,
+      ),
+      clampOpacity(
+        getGlowOpacity(
+          sunConfig.glow.outerOpacityBase,
+          sunConfig.glow.outerOpacityBoost,
+          glowStrength,
+        ),
+        0,
+        sunConfig.opacityCaps.outer,
+      ),
+    );
+
+    if (this.viewDirection.lengthSq() > 0) {
+      this.updateView(this.group.position.clone().add(this.viewDirection));
+    }
   }
 
   updatePosition(position) {
@@ -369,35 +462,36 @@ export class Sun {
     }
 
     this.viewDirection.normalize();
+    const { offsets } = this.preset.sun;
 
     if (this.innerGlow) {
       this.innerGlow.position
         .copy(this.viewDirection)
-        .multiplyScalar(this.radius * 0.18);
+        .multiplyScalar(this.radius * offsets.inner);
     }
 
     if (this.corona) {
       this.corona.position
         .copy(this.viewDirection)
-        .multiplyScalar(this.radius * 0.12);
+        .multiplyScalar(this.radius * offsets.corona);
     }
 
     if (this.halo) {
       this.halo.position
         .copy(this.viewDirection)
-        .multiplyScalar(this.radius * 0.04);
+        .multiplyScalar(this.radius * offsets.halo);
     }
 
     if (this.rays) {
       this.rays.position
         .copy(this.viewDirection)
-        .multiplyScalar(this.radius * 0.06);
+        .multiplyScalar(this.radius * offsets.rays);
     }
 
     if (this.outerGlow) {
       this.outerGlow.position
         .copy(this.viewDirection)
-        .multiplyScalar(this.radius * 0.02);
+        .multiplyScalar(this.radius * offsets.outer);
     }
   }
 
@@ -408,12 +502,14 @@ export class Sun {
   update(delta) {
     if (!this.mesh) return;
 
+    const { sun: sunConfig } = this.preset;
     this.elapsedTime += delta;
     this.mesh.rotation.y += delta * 0.04;
     this.mesh.rotation.x += delta * 0.012;
     this.mesh.material.uniforms.time.value = this.elapsedTime;
     this.mesh.material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
+      sunConfig.surface,
     );
 
     const glowStrength = getGlowStrength(this.sunlightMultiplier);
@@ -422,34 +518,34 @@ export class Sun {
 
     if (this.innerGlow) {
       this.innerGlow.scale.setScalar(
-        this.radius * SUN_VISUALS.glow.innerScale * glowPulse,
+        this.radius * sunConfig.glow.innerScale * glowPulse,
       );
       this.innerGlow.material.opacity = clampOpacity(
         getGlowOpacity(
-          SUN_VISUALS.glow.innerOpacityBase,
-          SUN_VISUALS.glow.innerOpacityBoost,
+          sunConfig.glow.innerOpacityBase,
+          sunConfig.glow.innerOpacityBoost,
           glowStrength,
         ) +
           Math.sin(this.elapsedTime * 1.4) * 0.05,
         0,
-        1,
+        sunConfig.opacityCaps.inner,
       );
     }
 
     if (this.corona) {
       this.corona.material.rotation += delta * 0.03;
       this.corona.scale.setScalar(
-        this.radius * SUN_VISUALS.glow.coronaScale * glowPulse,
+        this.radius * sunConfig.glow.coronaScale * glowPulse,
       );
       this.corona.material.opacity = clampOpacity(
         getGlowOpacity(
-          SUN_VISUALS.glow.coronaOpacityBase,
-          SUN_VISUALS.glow.coronaOpacityBoost,
+          sunConfig.glow.coronaOpacityBase,
+          sunConfig.glow.coronaOpacityBoost,
           glowStrength,
         ) +
           Math.sin(this.elapsedTime * 0.85 + 0.8) * 0.04,
         0,
-        1,
+        sunConfig.opacityCaps.corona,
       );
     }
 
@@ -458,21 +554,21 @@ export class Sun {
       this.rays.scale.setScalar(
         getGlowScale(
           this.radius,
-          SUN_VISUALS.glow.raysScale,
-          SUN_VISUALS.glow.raysScaleBoost,
+          sunConfig.glow.raysScale,
+          sunConfig.glow.raysScaleBoost,
           glowStrength,
         ) *
           (1 + Math.sin(this.elapsedTime * 0.5 + 0.2) * 0.035),
       );
       this.rays.material.opacity = clampOpacity(
         getGlowOpacity(
-          SUN_VISUALS.glow.raysOpacityBase,
-          SUN_VISUALS.glow.raysOpacityBoost,
+          sunConfig.glow.raysOpacityBase,
+          sunConfig.glow.raysOpacityBoost,
           glowStrength,
         ) +
           Math.sin(this.elapsedTime * 1.05) * 0.04,
         0,
-        1,
+        sunConfig.opacityCaps.rays,
       );
     }
 
@@ -481,20 +577,20 @@ export class Sun {
       this.halo.scale.setScalar(
         getGlowScale(
           this.radius,
-          SUN_VISUALS.glow.haloScale,
-          SUN_VISUALS.glow.haloScaleBoost,
+          sunConfig.glow.haloScale,
+          sunConfig.glow.haloScaleBoost,
           glowStrength,
         ) * outerPulse,
       );
       this.halo.material.opacity = clampOpacity(
         getGlowOpacity(
-          SUN_VISUALS.glow.haloOpacityBase,
-          SUN_VISUALS.glow.haloOpacityBoost,
+          sunConfig.glow.haloOpacityBase,
+          sunConfig.glow.haloOpacityBoost,
           glowStrength,
         ) +
           Math.sin(this.elapsedTime * 0.7) * 0.035,
         0,
-        1,
+        sunConfig.opacityCaps.halo,
       );
     }
 
@@ -502,20 +598,20 @@ export class Sun {
       this.outerGlow.scale.setScalar(
         getGlowScale(
           this.radius,
-          SUN_VISUALS.glow.outerScale,
-          SUN_VISUALS.glow.outerScaleBoost,
+          sunConfig.glow.outerScale,
+          sunConfig.glow.outerScaleBoost,
           glowStrength,
         ) * outerPulse,
       );
       this.outerGlow.material.opacity = clampOpacity(
         getGlowOpacity(
-          SUN_VISUALS.glow.outerOpacityBase,
-          SUN_VISUALS.glow.outerOpacityBoost,
+          sunConfig.glow.outerOpacityBase,
+          sunConfig.glow.outerOpacityBoost,
           glowStrength,
         ) +
           Math.sin(this.elapsedTime * 0.55) * 0.05,
         0,
-        1,
+        sunConfig.opacityCaps.outer,
       );
     }
   }

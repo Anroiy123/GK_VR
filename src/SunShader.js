@@ -65,8 +65,12 @@ export const SunShader = {
     void main() {
       vec2 centeredUv = vUv - 0.5;
       float radius = length(centeredUv) * 2.0;
-      float discMask = smoothstep(1.02, 0.92, radius);
+      float discMask = smoothstep(1.01, 0.9, radius);
       float core = pow(max(1.0 - radius, 0.0), 0.42) * coreBoost;
+
+      if (discMask <= 0.001) {
+        discard;
+      }
 
       vec2 flowUv = vec2(vUv.x * 1.65, vUv.y * 0.95);
       float plasma = fbm(flowUv * noiseScale + vec2(time * 0.35, -time * 0.18));
@@ -84,8 +88,9 @@ export const SunShader = {
       vec3 plasmaColor = mix(deepGold, hotGold, clamp(surfacePulse, 0.0, 1.0));
       vec3 coreColor = mix(plasmaColor, whiteHot, clamp(core * 0.95, 0.0, 1.0));
       vec3 color = coreColor * brightness;
+      vec3 premultipliedColor = clamp(color, 0.0, 2.5) * discMask;
 
-      gl_FragColor = vec4(clamp(color, 0.0, 2.5), discMask);
+      gl_FragColor = vec4(premultipliedColor, discMask);
     }
   `,
 };

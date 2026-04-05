@@ -1,9 +1,18 @@
+import {
+  DEFAULT_SUN_PRESET_ID,
+  SUN_PRESET_OPTIONS,
+  getSunPreset,
+} from "./SunPresets.js";
+
 export class UI {
   constructor() {
     this.speedSlider = document.getElementById("speed-slider");
     this.speedValueEl = document.getElementById("speed-value");
     this.sunlightSlider = document.getElementById("sunlight-slider");
     this.sunlightValueEl = document.getElementById("sunlight-value");
+    this.sunPresetButtons = Array.from(
+      document.querySelectorAll("[data-sun-preset]"),
+    );
     this.fpsCounter = document.getElementById("fps-counter");
     this.simTime = document.getElementById("sim-time");
     this.vrStatus = document.getElementById("vr-status");
@@ -28,9 +37,11 @@ export class UI {
     this.onBumpToggle = null;
     this.onCloudsToggle = null;
     this.onAtmosphereToggle = null;
+    this.onSunPresetChange = null;
 
     this.speedMultiplier = 1;
     this.sunlightMultiplier = 1.4;
+    this.sunPreset = DEFAULT_SUN_PRESET_ID;
     this.controlsCollapsed = false;
     this.frameCount = 0;
     this.lastFpsUpdate = 0;
@@ -48,6 +59,18 @@ export class UI {
       if (this.sunlightValueEl) {
         this.sunlightValueEl.textContent = `${this.sunlightMultiplier.toFixed(1)}x`;
       }
+    });
+
+    this.sunPresetButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextPreset = button.dataset.sunPreset;
+        if (!nextPreset || nextPreset === this.sunPreset) {
+          return;
+        }
+
+        this.setSunPreset(nextPreset);
+        this.onSunPresetChange?.(this.sunPreset);
+      });
     });
 
     this.issToggleBtn?.addEventListener("click", () => {
@@ -77,6 +100,8 @@ export class UI {
     this.controlsToggleBtn?.addEventListener("click", () => {
       this.setControlsCollapsed(!this.controlsCollapsed);
     });
+
+    this.setSunPreset(this.sunPreset);
   }
 
   hideLoading() {
@@ -159,6 +184,23 @@ export class UI {
         ? "🌫️ Tắt khí quyển"
         : "🌫️ Bật khí quyển";
     }
+  }
+
+  setSunPreset(presetId) {
+    const preset = getSunPreset(presetId);
+    this.sunPreset = preset.id;
+
+    this.sunPresetButtons.forEach((button) => {
+      const isActive = button.dataset.sunPreset === preset.id;
+      button.setAttribute("aria-pressed", String(isActive));
+      button.classList.toggle("active", isActive);
+      const option = SUN_PRESET_OPTIONS.find(
+        (item) => item.id === button.dataset.sunPreset,
+      );
+      if (option) {
+        button.textContent = option.label;
+      }
+    });
   }
 
   adjustSpeed(delta) {

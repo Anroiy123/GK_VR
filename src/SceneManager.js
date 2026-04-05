@@ -14,6 +14,7 @@ import { CelestialCalculator } from "./CelestialCalculator.js";
 import { Sun } from "./Sun.js";
 import { Moon } from "./Moon.js";
 import { Atmosphere } from "./Atmosphere.js";
+import { DEFAULT_SUN_PRESET, getSunPreset } from "./SunPresets.js";
 
 export class SceneManager {
   constructor(canvas) {
@@ -39,14 +40,16 @@ export class SceneManager {
     this.updateRendererPixelRatio();
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
-    this.baseSunLightIntensity = 3.5;
+    this.renderer.toneMappingExposure = DEFAULT_SUN_PRESET.toneMappingExposure;
+    this.baseSunLightIntensity = DEFAULT_SUN_PRESET.directionalLightBase;
+    this.currentSunPreset = DEFAULT_SUN_PRESET;
+    this.ambientLight = null;
 
     this.earth = new Earth();
     this.clouds = new Clouds();
     this.atmosphere = new Atmosphere();
     this.starfield = new Starfield();
-    this.sun = new Sun(1.5);
+    this.sun = new Sun(1);
     this.moon = new Moon(0.5);
     this.simDate = new Date(); // Thời gian mô phỏng
     this.markers = new Markers(2); // radius = 2
@@ -98,6 +101,10 @@ export class SceneManager {
       this.ui.setAtmosphereToggleText(isVisible);
     };
 
+    this.ui.onSunPresetChange = (presetId) => {
+      this.applySunPreset(getSunPreset(presetId));
+    };
+
     this.webxr.onSessionStart = () => {
       this.controls.setEnabled(false);
       this.ui.setVRStatus(true);
@@ -135,6 +142,7 @@ export class SceneManager {
         this.sun.load(textureLoader, textureQuality),
       ]);
     const atmosphereMesh = this.atmosphere.create(this.camera);
+    this.applySunPreset(this.currentSunPreset);
 
     this.scene.add(earthMesh);
     earthMesh.add(cloudMesh);
@@ -159,8 +167,21 @@ export class SceneManager {
     this.ui.setBumpToggleText(this.earth.surfaceDetailEnabled);
     this.ui.setCloudsToggleText(this.clouds.isVisible);
     this.ui.setAtmosphereToggleText(this.atmosphere.isVisible);
+    this.ui.setSunPreset(this.currentSunPreset.id);
 
     this.ui.hideLoading();
+  }
+
+  applySunPreset(preset) {
+    this.currentSunPreset = preset ?? DEFAULT_SUN_PRESET;
+    this.baseSunLightIntensity = this.currentSunPreset.directionalLightBase;
+    this.renderer.toneMappingExposure = this.currentSunPreset.toneMappingExposure;
+    this.sun.applyPreset(this.currentSunPreset);
+    this.atmosphere.applyPreset(this.currentSunPreset);
+
+    if (this.ambientLight) {
+      this.ambientLight.intensity = this.currentSunPreset.ambientIntensity;
+    }
   }
 
   setupLighting() {
@@ -177,8 +198,11 @@ export class SceneManager {
     this.scene.add(this.moonLight);
 
     // Tăng AmbientLight để các vùng tối bớt đen đặc
-    const ambientLight = new THREE.AmbientLight(0x404060, 0.8);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(
+      0x404060,
+      this.currentSunPreset.ambientIntensity,
+    );
+    this.scene.add(this.ambientLight);
   }
 
   updateRendererPixelRatio() {
@@ -203,7 +227,10 @@ export class SceneManager {
 
     // Tính toán thiên văn
     const jd = CelestialCalculator.getJulianDate(this.simDate);
-    const sunPos = CelestialCalculator.getSunPosition(jd, 50);
+    const sunPos = CelestialCalculator.getSunPosition(
+      jd,
+      this.currentSunPreset.distance,
+    );
     const sunDirection = CelestialCalculator.getSunDirection(jd);
     const earthRotationAngle = CelestialCalculator.getEarthRotationAngle(jd);
     const moonPos = CelestialCalculator.getMoonPosition(jd, 10);
@@ -228,7 +255,9 @@ export class SceneManager {
     this.earth.setSunDirection(sunDirection);
     this.earth.setMoonPosition(moonPos);
     this.earth.setCameraDistance(this.camera.position.length());
-    this.earth.setSunBrightness(this.ui.sunlightMultiplier);
+    this.earth.setSunBrightness(
+      this.ui.sunlightMultiplier * this.currentSunPreset.earthBrightnessFactor,
+    );
     this.sunLight.intensity =
       this.baseSunLightIntensity * this.ui.sunlightMultiplier;
     this.clouds.update(delta, speed, this.camera.position.length());
