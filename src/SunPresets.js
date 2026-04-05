@@ -188,7 +188,7 @@ export const SUN_PRESETS = Object.fromEntries(
   SUN_PRESET_OPTIONS.map((preset) => [preset.id, Object.freeze(preset)]),
 );
 
-export const DEFAULT_SUN_PRESET_ID = "realistic";
+export const DEFAULT_SUN_PRESET_ID = "cinematic";
 
 export const DEFAULT_SUN_PRESET = SUN_PRESETS[DEFAULT_SUN_PRESET_ID];
 

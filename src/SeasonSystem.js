@@ -4,7 +4,8 @@ import { CelestialCalculator } from "./CelestialCalculator.js";
 
 const DEMO_YEAR = 2026;
 const EARTH_RADIUS = 2;
-const SEASON_SUN_RADIUS = 1.6;
+const SEASON_SUN_RADIUS = 2.4;
+const EARTH_SCALE = 0.5; // Shrink Earth and its frame down so it's smaller than Sun
 const ORBIT_RADIUS = 8.2;
 const AXIS_TILT_DEG = 23.44;
 const AXIS_TILT_RAD = THREE.MathUtils.degToRad(AXIS_TILT_DEG);
@@ -293,6 +294,7 @@ export class SeasonSystem {
     this.earthAnchor.position.x = ORBIT_RADIUS;
     this.earthAnchor.add(this.earthGroup);
     this.earthGroup.add(this.earthFrame);
+    this.earthGroup.scale.setScalar(EARTH_SCALE);
     this.earthFrame.rotation.x = -AXIS_TILT_RAD;
     this.earthFrame.add(this.annotationGroup);
   }
@@ -461,6 +463,7 @@ export class SeasonSystem {
     this.sunWorldDirection
       .subVectors(this.sunWorldPosition, this.earthWorldPosition)
       .normalize();
+
     this.earth.setSunDirection(this.sunWorldDirection);
     this.earth.setMoonPosition(new THREE.Vector3(0, 0, 0));
     this.earth.setCameraDistance(
@@ -504,3 +507,4 @@ export class SeasonSystem {
     });
   }
 }
+
