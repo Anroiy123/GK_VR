@@ -20,6 +20,7 @@ export class Earth {
   constructor() {
     this.mesh = null;
     this.surfaceDetailEnabled = true;
+    this.flatMapLightingEnabled = false;
   }
 
   async load(textureLoader, textureQuality) {
@@ -53,6 +54,7 @@ export class Earth {
     material.uniforms.cameraDistance.value = 6;
     material.uniforms.surfaceDetailEnabled.value = 1;
     material.uniforms.sunBrightness.value = 1.4;
+    material.uniforms.flatMapLighting.value = 0;
 
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.rotation.order = 'YXZ';
@@ -91,6 +93,13 @@ export class Earth {
 
     if (!this.mesh || !this.mesh.material.uniforms.surfaceDetailEnabled) return;
     this.mesh.material.uniforms.surfaceDetailEnabled.value = isEnabled ? 1 : 0;
+  }
+
+  setFlatMapLightingEnabled(isEnabled) {
+    this.flatMapLightingEnabled = isEnabled;
+
+    if (!this.mesh || !this.mesh.material.uniforms.flatMapLighting) return;
+    this.mesh.material.uniforms.flatMapLighting.value = isEnabled ? 1 : 0;
   }
 
   toggleSurfaceDetail() {

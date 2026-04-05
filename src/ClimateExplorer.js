@@ -8,9 +8,14 @@ import {
 } from "./GeoMath.js";
 
 const OVERLAY_RADIUS_OFFSET = 0.018;
+const BORDER_RADIUS_OFFSET = 0.024;
 const HOTSPOT_RADIUS_OFFSET = 0.065;
 const PROBE_RADIUS_OFFSET = 0.085;
-const OVERLAY_OPACITY = 0.78;
+const OVERLAY_OPACITY = 0.54;
+const COUNTRY_BORDER_SOURCES = [
+  "climate/countries.geojson",
+  "https://cdn.jsdelivr.net/gh/johan/world.geo.json@master/countries.geo.json",
+];
 const MONTH_LABELS = [
   "Tháng 1",
   "Tháng 2",
@@ -181,12 +186,21 @@ export class ClimateExplorer {
     this.group.name = "climate-explorer";
     this.group.visible = false;
     this.overlayMesh = null;
+    this.borderGroup = new THREE.Group();
+    this.borderGroup.name = "climate-country-borders";
+    this.borderMaterial = new THREE.LineBasicMaterial({
+      color: 0x102030,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+      toneMapped: false,
+    });
     this.hotspotGroup = new THREE.Group();
     this.hotspotGroup.name = "climate-hotspots";
     this.probeGroup = new THREE.Group();
     this.probeGroup.name = "climate-probe";
     this.probeGroup.visible = false;
-    this.group.add(this.hotspotGroup, this.probeGroup);
+    this.group.add(this.borderGroup, this.hotspotGroup, this.probeGroup);
 
     this.textureLoader = null;
     this.metadata = DEFAULT_CLIMATE_METADATA;
@@ -380,7 +394,7 @@ export class ClimateExplorer {
   async init(textureLoader) {
     this.textureLoader = textureLoader;
 
-    const [metadataResult, insightsResult] = await Promise.allSettled([
+    const [metadataResult, insightsResult, borderResult] = await Promise.allSettled([
       fetch("climate/metadata.json").then((response) => {
         if (!response.ok) {
           throw new Error(`Climate metadata not found (${response.status}).`);
@@ -393,6 +407,7 @@ export class ClimateExplorer {
         }
         return response.json();
       }),
+      this.loadCountryBorders(),
     ]);
 
     if (
@@ -410,6 +425,12 @@ export class ClimateExplorer {
       if (Array.isArray(insights)) {
         this.setInsights(insights);
       }
+    }
+
+    if (borderResult.status === "fulfilled") {
+      this.setCountryBorders(borderResult.value);
+    } else {
+      console.warn("Climate country borders unavailable:", borderResult.reason);
     }
 
     this.isReady = true;
@@ -612,6 +633,130 @@ export class ClimateExplorer {
 
     this.overlayMesh.material.uniforms.palettePositions.value = positions;
     this.overlayMesh.material.uniforms.paletteColors.value = colors;
+  }
+
+  async loadCountryBorders() {
+    let lastError = null;
+
+    for (const source of COUNTRY_BORDER_SOURCES) {
+      try {
+        const response = await fetch(source);
+        if (!response.ok) {
+          throw new Error(`Country borders not found (${response.status}) at ${source}.`);
+        }
+
+        const geojson = await response.json();
+        if (!geojson || !Array.isArray(geojson.features)) {
+          throw new Error(`Invalid GeoJSON at ${source}.`);
+        }
+
+        if (geojson.features.length === 0) {
+          throw new Error(`Empty GeoJSON at ${source}.`);
+        }
+
+        return geojson;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError ?? new Error("Không tải được dữ liệu biên giới quốc gia.");
+  }
+
+  setCountryBorders(geojson) {
+    this.disposeCountryBorders();
+
+    if (!Array.isArray(geojson?.features)) {
+      return;
+    }
+
+    const radius = this.earthRadius + BORDER_RADIUS_OFFSET;
+    const lineGeometries = [];
+
+    geojson.features.forEach((feature) => {
+      const paths = this.extractBorderPaths(feature?.geometry);
+      paths.forEach((path) => {
+        const sanitizedSegments = this.splitPathOnDateline(path);
+        sanitizedSegments.forEach((segment) => {
+          if (segment.length < 2) {
+            return;
+          }
+
+          const points = segment.map(([lon, lat]) =>
+            latLonToVector3(lat, lon, radius),
+          );
+
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          lineGeometries.push(geometry);
+
+          const line = new THREE.Line(geometry, this.borderMaterial);
+          line.renderOrder = 3;
+          this.borderGroup.add(line);
+        });
+      });
+    });
+
+    this.borderGroup.visible = lineGeometries.length > 0;
+  }
+
+  extractBorderPaths(geometry) {
+    if (!geometry?.type || !geometry.coordinates) {
+      return [];
+    }
+
+    switch (geometry.type) {
+      case "Polygon":
+        return geometry.coordinates;
+      case "MultiPolygon":
+        return geometry.coordinates.flat();
+      case "LineString":
+        return [geometry.coordinates];
+      case "MultiLineString":
+        return geometry.coordinates;
+      default:
+        return [];
+    }
+  }
+
+  splitPathOnDateline(path) {
+    if (!Array.isArray(path) || path.length < 2) {
+      return [];
+    }
+
+    const segments = [];
+    let currentSegment = [];
+
+    path.forEach((point, index) => {
+      const [lon, lat] = point;
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+        return;
+      }
+
+      if (index > 0) {
+        const [prevLon] = path[index - 1];
+        if (Number.isFinite(prevLon) && Math.abs(lon - prevLon) > 180) {
+          if (currentSegment.length > 1) {
+            segments.push(currentSegment);
+          }
+          currentSegment = [];
+        }
+      }
+
+      currentSegment.push([lon, lat]);
+    });
+
+    if (currentSegment.length > 1) {
+      segments.push(currentSegment);
+    }
+
+    return segments;
+  }
+
+  disposeCountryBorders() {
+    this.borderGroup.children.forEach((child) => {
+      child.geometry?.dispose?.();
+    });
+    this.borderGroup.clear();
   }
 
   updateHotspotVisibility() {
@@ -821,12 +966,14 @@ export class ClimateExplorer {
   }
 
   dispose() {
+    this.disposeCountryBorders();
     this.textureEntries.forEach((entry) => {
       if (entry.texture && entry.texture !== this.placeholderTexture) {
         entry.texture.dispose();
       }
     });
     this.placeholderTexture.dispose();
+    this.borderMaterial.dispose();
     this.overlayMesh.geometry.dispose();
     this.overlayMesh.material.dispose();
   }

@@ -11,6 +11,7 @@ export const EarthShader = {
     cameraDistance: { value: 6 },
     surfaceDetailEnabled: { value: 1 },
     sunBrightness: { value: 1.4 },
+    flatMapLighting: { value: 0 },
   },
 
   vertexShader: `
@@ -40,6 +41,7 @@ export const EarthShader = {
     uniform float cameraDistance;
     uniform float surfaceDetailEnabled;
     uniform float sunBrightness;
+    uniform float flatMapLighting;
 
     varying vec2 vUv;
     varying vec3 vNormal;
@@ -137,6 +139,8 @@ export const EarthShader = {
 
       // Mix day and night based on light incidence
       vec3 finalColor = finalDayColor * dayMix + finalNightColor + (moonlightColor * (1.0 - dayMix));
+      vec3 flatLitColor = daySurfaceColor * 1.08;
+      finalColor = mix(finalColor, flatLitColor, clamp(flatMapLighting, 0.0, 1.0));
 
       gl_FragColor = vec4(finalColor, 1.0);
       

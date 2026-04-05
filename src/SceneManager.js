@@ -468,6 +468,7 @@ export class SceneManager {
     }
 
     this.earthViewMode = nextMode;
+    this.earth.setFlatMapLightingEnabled(this.isClimateMode(nextMode));
 
     if (nextMode === DEFAULT_EARTH_VIEW_MODE) {
       this.mapOverlay.setVisible(false);
@@ -714,6 +715,7 @@ export class SceneManager {
     this.earth.setSunDirection(sunDirection);
     this.earth.setMoonPosition(moonPos);
     this.earth.setCameraDistance(activeCameraDistance);
+    this.earth.setFlatMapLightingEnabled(this.isClimateMode());
     this.earth.setSunBrightness(
       this.ui.sunlightMultiplier * this.currentSunPreset.earthBrightnessFactor,
     );
