@@ -13,6 +13,8 @@ export class Interaction {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.isVR = false;
+    this.desktopMode = "markers";
+    this.onClimatePointer = null;
     this.vrControllers = [];
     this.vrControllerGrips = [];
     this.selectedMarker = null;
@@ -54,6 +56,18 @@ export class Interaction {
 
   setAudioManager(audioManager) {
     this.audioManager = audioManager;
+  }
+
+  setDesktopMode(mode) {
+    this.desktopMode = mode;
+
+    if (mode !== "markers") {
+      this.clearSelection();
+    }
+  }
+
+  setClimatePointerHandler(handler) {
+    this.onClimatePointer = handler;
   }
 
   setupVRInputDebugOverlay() {
@@ -423,7 +437,18 @@ export class Interaction {
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    this.handleMarkerSelection();
+
+    if (this.desktopMode === "climate") {
+      this.onClimatePointer?.(this.raycaster);
+      return;
+    }
+
+    if (this.desktopMode === "markers") {
+      this.handleMarkerSelection();
+      return;
+    }
+
+    this.clearSelection();
   }
 
   onVRSelect(event) {
@@ -882,6 +907,11 @@ export class Interaction {
       }
     } else {
       this.updateVRInputDebugOverlay([]);
+    }
+
+    if (this.desktopMode !== "markers") {
+      this.ui.hideLocationPopup();
+      return;
     }
 
     if (!this.selectedMarker) {

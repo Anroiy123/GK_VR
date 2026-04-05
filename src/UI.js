@@ -4,6 +4,21 @@ import {
   getSunPreset,
 } from "./SunPresets.js";
 
+const DEFAULT_MONTH_LABELS = [
+  "Tháng 1",
+  "Tháng 2",
+  "Tháng 3",
+  "Tháng 4",
+  "Tháng 5",
+  "Tháng 6",
+  "Tháng 7",
+  "Tháng 8",
+  "Tháng 9",
+  "Tháng 10",
+  "Tháng 11",
+  "Tháng 12",
+];
+
 export class UI {
   constructor() {
     this.speedSlider = document.getElementById("speed-slider");
@@ -12,6 +27,9 @@ export class UI {
     this.sunlightValueEl = document.getElementById("sunlight-value");
     this.sunPresetButtons = Array.from(
       document.querySelectorAll("[data-sun-preset]"),
+    );
+    this.earthViewButtons = Array.from(
+      document.querySelectorAll("[data-earth-view]"),
     );
     this.fpsCounter = document.getElementById("fps-counter");
     this.simTime = document.getElementById("sim-time");
@@ -24,19 +42,46 @@ export class UI {
     this.markersToggleBtn = document.getElementById("markers-toggle");
     this.cloudsToggleBtn = document.getElementById("clouds-toggle");
     this.atmosphereToggleBtn = document.getElementById("atmosphere-toggle");
-    this.mapModeToggleBtn = document.getElementById("map-mode-toggle");
+    this.climateControls = document.getElementById("climate-controls");
+    this.climateMonthSlider = document.getElementById("climate-month-slider");
+    this.climateMonthLabel = document.getElementById("climate-month-label");
+    this.climateLegendTitle = document.getElementById("climate-legend-title");
+    this.climateLegendBar = document.getElementById("climate-legend-bar");
+    this.climateLegendMin = document.getElementById("climate-legend-min");
+    this.climateLegendMax = document.getElementById("climate-legend-max");
+    this.climatePanel = document.getElementById("climate-panel");
+    this.climatePanelKicker = document.getElementById("climate-panel-kicker");
+    this.climatePanelTitle = document.getElementById("climate-panel-title");
+    this.climatePanelStatus = document.getElementById("climate-panel-status");
+    this.climatePanelSample = document.getElementById("climate-panel-sample");
+    this.climateProbeLat = document.getElementById("climate-probe-lat");
+    this.climateProbeLon = document.getElementById("climate-probe-lon");
+    this.climateProbeMonth = document.getElementById("climate-probe-month");
+    this.climateProbeValue = document.getElementById("climate-probe-value");
+    this.climateProbeInterpretation = document.getElementById(
+      "climate-probe-interpretation",
+    );
+    this.climateInsight = document.getElementById("climate-panel-insight");
+    this.climateInsightTitle = document.getElementById(
+      "climate-panel-insight-title",
+    );
+    this.climateInsightSummary = document.getElementById(
+      "climate-panel-insight-summary",
+    );
     this.locationPopup = document.getElementById("location-popup");
     this.locationPopupTitle = document.getElementById("location-popup-title");
     this.locationPopupDesc = document.getElementById("location-popup-desc");
     this.locationPopupGallery = document.getElementById(
       "location-popup-gallery",
     );
+
     this.onISSToggle = null;
     this.onMuteToggle = null;
     this.onMarkersToggle = null;
     this.onCloudsToggle = null;
     this.onAtmosphereToggle = null;
-    this.onMapModeToggle = null;
+    this.onEarthViewModeChange = null;
+    this.onClimateMonthChange = null;
     this.onSunPresetChange = null;
     this.onControlsToggle = null;
     this.onSpeedChange = null;
@@ -45,10 +90,12 @@ export class UI {
     this.speedMultiplier = 1;
     this.sunlightMultiplier = 1.4;
     this.sunPreset = DEFAULT_SUN_PRESET_ID;
+    this.earthViewMode = "globe";
     this.controlsCollapsed = false;
     this.frameCount = 0;
     this.lastFpsUpdate = 0;
     this.activePopupName = null;
+    this.monthLabels = [...DEFAULT_MONTH_LABELS];
 
     this.speedSlider?.addEventListener("input", () => {
       this.speedMultiplier = parseFloat(this.speedSlider.value);
@@ -66,6 +113,12 @@ export class UI {
       this.onSunlightChange?.(this.sunlightMultiplier);
     });
 
+    this.climateMonthSlider?.addEventListener("input", () => {
+      const nextMonthIndex = parseInt(this.climateMonthSlider.value, 10) || 0;
+      this.setClimateMonth(nextMonthIndex);
+      this.onClimateMonthChange?.(nextMonthIndex);
+    });
+
     this.sunPresetButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const nextPreset = button.dataset.sunPreset;
@@ -75,6 +128,18 @@ export class UI {
 
         this.setSunPreset(nextPreset);
         this.onSunPresetChange?.(this.sunPreset);
+      });
+    });
+
+    this.earthViewButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextMode = button.dataset.earthView;
+        if (!nextMode || nextMode === this.earthViewMode) {
+          return;
+        }
+
+        this.setEarthViewMode(nextMode);
+        this.onEarthViewModeChange?.(nextMode);
       });
     });
 
@@ -98,10 +163,6 @@ export class UI {
       this.onAtmosphereToggle?.();
     });
 
-    this.mapModeToggleBtn?.addEventListener("click", () => {
-      this.onMapModeToggle?.();
-    });
-
     this.controlsToggleBtn?.addEventListener("click", () => {
       const nextCollapsed = !this.controlsCollapsed;
       this.setControlsCollapsed(nextCollapsed);
@@ -109,8 +170,10 @@ export class UI {
     });
 
     this.setMarkersToggleText(false);
-    this.setMapModeToggleText(false);
-    this.setLayerLockState(false);
+    this.setClimateMonth(0);
+    this.setClimateControlsVisible(false);
+    this.setEarthViewMode(this.earthViewMode);
+    this.setControlLocks({});
     this.setSunPreset(this.sunPreset);
   }
 
@@ -148,6 +211,15 @@ export class UI {
       const time = parts[1].substring(0, 8);
       this.simTime.textContent = `Thời gian: ${parts[0]} ${time} UTC`;
     }
+  }
+
+  setMonthLabels(labels) {
+    if (Array.isArray(labels) && labels.length === 12) {
+      this.monthLabels = [...labels];
+    }
+
+    const sliderValue = parseInt(this.climateMonthSlider?.value ?? "0", 10) || 0;
+    this.setClimateMonth(sliderValue);
   }
 
   setISSToggleText(isTracking) {
@@ -188,26 +260,6 @@ export class UI {
     }
   }
 
-  setMapModeToggleText(isEnabled) {
-    if (this.mapModeToggleBtn) {
-      this.mapModeToggleBtn.textContent = isEnabled
-        ? "🗺️ Tắt chế độ bản đồ"
-        : "🗺️ Bật chế độ bản đồ";
-    }
-  }
-
-  setLayerLockState(isLocked) {
-    [this.cloudsToggleBtn, this.atmosphereToggleBtn].forEach((button) => {
-      if (!button) {
-        return;
-      }
-
-      button.disabled = isLocked;
-      button.classList.toggle("is-locked", isLocked);
-      button.setAttribute("aria-disabled", String(isLocked));
-    });
-  }
-
   setSunPreset(presetId) {
     const preset = getSunPreset(presetId);
     this.sunPreset = preset.id;
@@ -223,6 +275,161 @@ export class UI {
         button.textContent = option.label;
       }
     });
+  }
+
+  setEarthViewMode(mode) {
+    this.earthViewMode = mode;
+
+    this.earthViewButtons.forEach((button) => {
+      const isActive = button.dataset.earthView === mode;
+      button.setAttribute("aria-pressed", String(isActive));
+      button.classList.toggle("active", isActive);
+    });
+  }
+
+  setClimateControlsVisible(isVisible) {
+    if (!this.climateControls) {
+      return;
+    }
+
+    this.climateControls.hidden = !isVisible;
+  }
+
+  setClimateMonth(monthIndex) {
+    const safeMonthIndex = Math.min(11, Math.max(0, monthIndex));
+
+    if (this.climateMonthSlider) {
+      this.climateMonthSlider.value = String(safeMonthIndex);
+    }
+
+    if (this.climateMonthLabel) {
+      this.climateMonthLabel.textContent =
+        this.monthLabels[safeMonthIndex] ?? `Tháng ${safeMonthIndex + 1}`;
+    }
+  }
+
+  setClimateLegend(variableMeta) {
+    if (!variableMeta) {
+      return;
+    }
+
+    if (this.climateLegendTitle) {
+      this.climateLegendTitle.textContent = variableMeta.title;
+    }
+
+    if (this.climateLegendBar) {
+      const gradient = variableMeta.paletteStops
+        .map((stop) => `${stop.color} ${Math.round(stop.position * 100)}%`)
+        .join(", ");
+      this.climateLegendBar.style.background = `linear-gradient(90deg, ${gradient})`;
+    }
+
+    if (this.climateLegendMin) {
+      this.climateLegendMin.textContent = `${variableMeta.domain[0]}${variableMeta.unit}`;
+    }
+
+    if (this.climateLegendMax) {
+      this.climateLegendMax.textContent = `${variableMeta.domain[1]}${variableMeta.unit}`;
+    }
+  }
+
+  setControlLocks({
+    cloudsLocked = false,
+    atmosphereLocked = false,
+    markersLocked = false,
+  } = {}) {
+    const lockMap = [
+      { button: this.cloudsToggleBtn, locked: cloudsLocked },
+      { button: this.atmosphereToggleBtn, locked: atmosphereLocked },
+      { button: this.markersToggleBtn, locked: markersLocked },
+    ];
+
+    lockMap.forEach(({ button, locked }) => {
+      if (!button) {
+        return;
+      }
+
+      button.disabled = locked;
+      button.classList.toggle("is-locked", locked);
+      button.setAttribute("aria-disabled", String(locked));
+    });
+  }
+
+  showClimateStatus(title, message, kicker = "Climate Explorer") {
+    if (
+      !this.climatePanel ||
+      !this.climatePanelTitle ||
+      !this.climatePanelStatus ||
+      !this.climatePanelKicker
+    ) {
+      return;
+    }
+
+    this.climatePanel.hidden = false;
+    this.climatePanelKicker.textContent = kicker;
+    this.climatePanelTitle.textContent = title;
+    this.climatePanelStatus.textContent = message;
+    this.climatePanelSample.hidden = true;
+    this.climateInsight.hidden = true;
+  }
+
+  showClimateProbe(sample) {
+    if (
+      !sample ||
+      !this.climatePanel ||
+      !this.climatePanelTitle ||
+      !this.climatePanelStatus ||
+      !this.climatePanelSample ||
+      !this.climateProbeLat ||
+      !this.climateProbeLon ||
+      !this.climateProbeMonth ||
+      !this.climateProbeValue ||
+      !this.climateProbeInterpretation ||
+      !this.climatePanelKicker
+    ) {
+      return;
+    }
+
+    this.climatePanel.hidden = false;
+    this.climatePanelKicker.textContent = sample.label;
+    this.climatePanelTitle.textContent = sample.title;
+    this.climatePanelStatus.textContent = "Dữ liệu khí hậu tại điểm đã chọn.";
+    this.climateProbeLat.textContent = sample.latLabel;
+    this.climateProbeLon.textContent = sample.lonLabel;
+    this.climateProbeMonth.textContent = sample.monthLabel;
+    this.climateProbeValue.textContent = sample.valueText;
+    this.climateProbeInterpretation.textContent = sample.interpretation;
+    this.climatePanelSample.hidden = false;
+    this.climateInsight.hidden = true;
+  }
+
+  showClimateInsight(insight, sample) {
+    if (
+      !insight ||
+      !this.climateInsight ||
+      !this.climateInsightTitle ||
+      !this.climateInsightSummary
+    ) {
+      return;
+    }
+
+    if (sample) {
+      this.showClimateProbe(sample);
+    }
+
+    this.climateInsightTitle.textContent = insight.title;
+    this.climateInsightSummary.textContent = insight.summary;
+    this.climateInsight.hidden = false;
+  }
+
+  hideClimateProbe() {
+    if (!this.climatePanel) {
+      return;
+    }
+
+    this.climatePanel.hidden = true;
+    this.climatePanelSample.hidden = true;
+    this.climateInsight.hidden = true;
   }
 
   adjustSpeed(delta) {

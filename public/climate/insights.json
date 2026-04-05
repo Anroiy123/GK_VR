@@ -1,0 +1,92 @@
+[
+  {
+    "id": "sahara-heat",
+    "variable": "temperature",
+    "lat": 23.5,
+    "lon": 13,
+    "title": "Sahara hấp thụ bức xạ mạnh",
+    "summary": "Bầu trời quang, nền sa mạc khô và ít mây khiến vùng Sahara nóng lên rất mạnh vào cuối xuân và mùa hè.",
+    "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "priority": 1
+  },
+  {
+    "id": "siberia-cold",
+    "variable": "temperature",
+    "lat": 62,
+    "lon": 105,
+    "title": "Siberia lạnh sâu vào mùa đông",
+    "summary": "Biên độ nhiệt lớn trên lục địa khiến miền bắc Á-Âu giảm nhiệt mạnh vào mùa đông Bắc bán cầu.",
+    "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+    ],
+    "priority": 1
+  },
+  {
+    "id": "india-monsoon",
+    "variable": "rainfall",
+    "lat": 20,
+    "lon": 78,
+    "title": "Gió mùa Nam Á tăng mưa mùa hè",
+    "summary": "Không khí ẩm từ Ấn Độ Dương tràn vào đất liền làm lượng mưa tăng vọt trong giai đoạn gió mùa.",
+    "months": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "priority": 1
+  },
+  {
+    "id": "amazon-basin",
+    "variable": "rainfall",
+    "lat": -4,
+    "lon": -62,
+    "title": "Amazon duy trì nền ẩm cao",
+    "summary": "Rừng mưa nhiệt đới Amazon nằm gần dải hội tụ nhiệt đới nên giữ lượng ẩm cao trong phần lớn năm.",
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      10,
+      11,
+      12
+    ],
+    "priority": 2
+  },
+  {
+    "id": "australia-dry",
+    "variable": "rainfall",
+    "lat": -25,
+    "lon": 133,
+    "title": "Nội địa Australia rất khô",
+    "summary": "Nằm gần đai áp cao cận nhiệt và xa nguồn ẩm lớn, nội địa Australia thường có lượng mưa thấp quanh năm.",
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "priority": 2
+  }
+]

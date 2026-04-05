@@ -1,0 +1,82 @@
+{
+  "months": [
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12"
+  ],
+  "variables": {
+    "temperature": {
+      "id": "temperature",
+      "label": "Nhiệt độ",
+      "title": "Nhiệt độ trung bình tháng",
+      "unit": "°C",
+      "domain": [
+        -35,
+        45
+      ],
+      "paletteStops": [
+        {
+          "position": 0.0,
+          "color": "#231c72"
+        },
+        {
+          "position": 0.25,
+          "color": "#2d6cdf"
+        },
+        {
+          "position": 0.5,
+          "color": "#72c2ff"
+        },
+        {
+          "position": 0.74,
+          "color": "#ffd46b"
+        },
+        {
+          "position": 1.0,
+          "color": "#cb4b2f"
+        }
+      ]
+    },
+    "rainfall": {
+      "id": "rainfall",
+      "label": "Lượng mưa",
+      "title": "Lượng mưa trung bình tháng",
+      "unit": "mm",
+      "domain": [
+        0,
+        400
+      ],
+      "paletteStops": [
+        {
+          "position": 0.0,
+          "color": "#7b5d3f"
+        },
+        {
+          "position": 0.22,
+          "color": "#c9a86a"
+        },
+        {
+          "position": 0.48,
+          "color": "#98d98e"
+        },
+        {
+          "position": 0.74,
+          "color": "#4fb5d7"
+        },
+        {
+          "position": 1.0,
+          "color": "#1f5fb7"
+        }
+      ]
+    }
+  }
+}

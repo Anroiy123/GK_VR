@@ -14,16 +14,22 @@
     </div>
 
     <div id="ui-overlay">
-        <div id="info-panel">
-            <h2>🌍 Trái Đất VR</h2>
-            <p id="fps-counter">FPS: --</p>
-            <p id="sim-time">Thời gian: --</p>
-            <p id="vr-status">VR: Chưa kết nối</p>
-        </div>
-
         <div id="controls-panel">
             <button id="controls-toggle" aria-expanded="true">◀ Ẩn bảng điều khiển</button>
             <div id="controls-body">
+                <div class="panel-title">
+                    <h2>🌍 Trái Đất VR</h2>
+                    <p>Điều khiển nhanh các lớp hiển thị và mô phỏng.</p>
+                </div>
+                <div id="earth-view-control" class="control-group">
+                    <label>Chế độ xem</label>
+                    <div class="segmented-control segmented-control--4" role="group" aria-label="Chế độ xem địa cầu">
+                        <button type="button" class="earth-view-btn active" data-earth-view="globe" aria-pressed="true">Globe</button>
+                        <button type="button" class="earth-view-btn" data-earth-view="coordinates" aria-pressed="false">Tọa độ</button>
+                        <button type="button" class="earth-view-btn" data-earth-view="temperature" aria-pressed="false">Nhiệt độ</button>
+                        <button type="button" class="earth-view-btn" data-earth-view="rainfall" aria-pressed="false">Mưa</button>
+                    </div>
+                </div>
                 <div id="speed-control" class="control-group">
                     <label for="speed-slider">Tốc độ quay</label>
                     <div class="slider-row">
@@ -40,19 +46,42 @@
                 </div>
                 <div id="sun-preset-control" class="control-group">
                     <label>Preset mặt trời</label>
-                    <div id="sun-preset-options" class="segmented-control" role="group" aria-label="Preset mặt trời">
+                    <div id="sun-preset-options" class="segmented-control segmented-control--3" role="group" aria-label="Preset mặt trời">
                         <button type="button" class="sun-preset-btn active" data-sun-preset="realistic" aria-pressed="true">Realistic</button>
                         <button type="button" class="sun-preset-btn" data-sun-preset="hybrid" aria-pressed="false">Hybrid</button>
                         <button type="button" class="sun-preset-btn" data-sun-preset="cinematic" aria-pressed="false">Cinematic</button>
                     </div>
                 </div>
-                <button id="iss-toggle">🛰️ ISS View</button>
-                <button id="mute-btn">🔇 Âm thanh</button>
-                <button id="markers-toggle">📍 Hiện địa danh</button>
-                <button id="clouds-toggle">☁️ Tắt mây</button>
-                <button id="atmosphere-toggle">🌫️ Tắt khí quyển</button>
-                <button id="map-mode-toggle">🗺️ Bật chế độ bản đồ</button>
+                <div id="climate-controls" class="control-group" hidden>
+                    <div class="climate-header-row">
+                        <label for="climate-month-slider">Tháng dữ liệu</label>
+                        <span id="climate-month-label">Tháng 1</span>
+                    </div>
+                    <input type="range" id="climate-month-slider" min="0" max="11" step="1" value="0" />
+                    <div id="climate-legend">
+                        <p id="climate-legend-title">Bản đồ khí hậu</p>
+                        <div id="climate-legend-bar"></div>
+                        <div class="climate-legend-scale">
+                            <span id="climate-legend-min">--</span>
+                            <span id="climate-legend-max">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-grid">
+                    <button id="iss-toggle">🛰️ ISS View</button>
+                    <button id="mute-btn">🔇 Âm thanh</button>
+                    <button id="markers-toggle">📍 Hiện địa danh</button>
+                    <button id="clouds-toggle">☁️ Tắt mây</button>
+                    <button id="atmosphere-toggle">🌫️ Tắt khí quyển</button>
+                </div>
             </div>
+        </div>
+
+        <div id="info-panel">
+            <p class="info-kicker">Session</p>
+            <p id="fps-counter">FPS: --</p>
+            <p id="sim-time">Thời gian: --</p>
+            <p id="vr-status">VR: Chưa kết nối</p>
         </div>
 
         <div id="help-panel">
@@ -68,6 +97,39 @@
             </div>
             <div id="location-popup-gallery"></div>
         </div>
+
+        <aside id="climate-panel" hidden>
+            <p id="climate-panel-kicker" class="climate-panel-kicker">Climate Explorer</p>
+            <h3 id="climate-panel-title">Dữ liệu khí hậu</h3>
+            <p id="climate-panel-status">Chọn một điểm trên Trái Đất để xem dữ liệu khí hậu.</p>
+
+            <div id="climate-panel-sample" hidden>
+                <div class="climate-stat-grid">
+                    <div class="climate-stat-card">
+                        <span class="climate-stat-label">Vĩ độ</span>
+                        <strong id="climate-probe-lat">--</strong>
+                    </div>
+                    <div class="climate-stat-card">
+                        <span class="climate-stat-label">Kinh độ</span>
+                        <strong id="climate-probe-lon">--</strong>
+                    </div>
+                    <div class="climate-stat-card">
+                        <span class="climate-stat-label">Tháng</span>
+                        <strong id="climate-probe-month">--</strong>
+                    </div>
+                    <div class="climate-stat-card">
+                        <span class="climate-stat-label">Giá trị</span>
+                        <strong id="climate-probe-value">--</strong>
+                    </div>
+                </div>
+                <p id="climate-probe-interpretation" class="climate-probe-interpretation"></p>
+            </div>
+
+            <div id="climate-panel-insight" hidden>
+                <h4 id="climate-panel-insight-title"></h4>
+                <p id="climate-panel-insight-summary"></p>
+            </div>
+        </aside>
     </div>
 
     <canvas id="canvas"></canvas>
