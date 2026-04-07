@@ -122,7 +122,7 @@ export class UI {
     this.onSunlightChange = null;
 
     this.speedMultiplier = 1;
-    this.sunlightMultiplier = 1.4;
+    this.sunlightMultiplier = 1.0;
     this.sunPreset = DEFAULT_SUN_PRESET_ID;
     this.earthViewMode = "globe";
     this.textureQuality = "auto";
@@ -290,7 +290,8 @@ export class UI {
       this.monthLabels = [...labels];
     }
 
-    const sliderValue = parseInt(this.climateMonthSlider?.value ?? "0", 10) || 0;
+    const sliderValue =
+      parseInt(this.climateMonthSlider?.value ?? "0", 10) || 0;
     this.setClimateMonth(sliderValue);
   }
 
@@ -593,8 +594,7 @@ export class UI {
     this.seasonPanelKicker.textContent = "Khám phá mùa";
     this.seasonPanelTitle.textContent =
       seasonState.stateLabel ?? seasonState.eventLabel;
-    this.seasonPanelStatus.textContent =
-      `${seasonState.monthLabel} | Quan sát trực tiếp Trái Đất nghiêng quanh Mặt Trời trong scene 3D.`;
+    this.seasonPanelStatus.textContent = `${seasonState.monthLabel} | Quan sát trực tiếp Trái Đất nghiêng quanh Mặt Trời trong scene 3D.`;
     this.seasonPanelDate.textContent = seasonState.eventDateLabel;
     this.seasonPanelSubsolar.textContent = seasonState.subsolarLatitudeLabel;
     this.seasonPanelTilt.textContent = `${seasonState.axialTiltDeg.toFixed(2)}°`;
@@ -668,8 +668,7 @@ export class UI {
       "transform",
       `translate(${earthX.toFixed(2)} ${earthY.toFixed(2)})`,
     );
-    this.seasonOrbitCaption.textContent =
-      `${seasonState.stateLabel ?? seasonState.eventLabel} | ${seasonState.dominantHemisphere}`;
+    this.seasonOrbitCaption.textContent = `${seasonState.stateLabel ?? seasonState.eventLabel} | ${seasonState.dominantHemisphere}`;
     this.setSeasonEventActive(
       seasonState.selectedEventKey ?? seasonState.eventKey,
     );

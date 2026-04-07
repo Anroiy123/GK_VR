@@ -4,7 +4,7 @@ export const SunShader = {
   uniforms: {
     sunMap: { value: null },
     time: { value: 0 },
-    intensity: { value: 1.4 },
+    intensity: { value: 1.0 },
     coreBoost: { value: 1.15 },
     rimPower: { value: 1.9 },
     noiseScale: { value: 6.5 },

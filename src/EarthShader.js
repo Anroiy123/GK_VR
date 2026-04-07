@@ -10,7 +10,7 @@ export const EarthShader = {
     nightMapTexelSize: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
     cameraDistance: { value: 6 },
     surfaceDetailEnabled: { value: 1 },
-    sunBrightness: { value: 1.4 },
+    sunBrightness: { value: 1.0 },
     flatMapLighting: { value: 0 },
   },
 

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 const EQUIRECTANGULAR_WIDTHS = [16384, 8192, 4096, 2048, 1024, 512];
 const EARTH_TEXTURE_QUALITY_WIDTHS = {
@@ -10,19 +10,19 @@ const EARTH_TEXTURE_QUALITY_WIDTHS = {
 };
 
 export const EARTH_TEXTURE_QUALITY_OPTIONS = Object.freeze([
-  { id: 'auto', label: 'Auto' },
-  { id: 'maximum', label: 'Max' },
-  { id: 'high', label: 'High' },
-  { id: 'balanced', label: 'Mid' },
-  { id: 'low', label: 'Low' },
+  { id: "auto", label: "Auto" },
+  { id: "maximum", label: "Max" },
+  { id: "high", label: "High" },
+  { id: "balanced", label: "Mid" },
+  { id: "low", label: "Low" },
 ]);
 
 const EARTH_TEXTURE_QUALITY_OPTION_IDS = new Set(
-  EARTH_TEXTURE_QUALITY_OPTIONS.map((option) => option.id)
+  EARTH_TEXTURE_QUALITY_OPTIONS.map((option) => option.id),
 );
 
 export function normalizeEarthTextureQualityPreset(preset) {
-  return EARTH_TEXTURE_QUALITY_OPTION_IDS.has(preset) ? preset : 'auto';
+  return EARTH_TEXTURE_QUALITY_OPTION_IDS.has(preset) ? preset : "auto";
 }
 
 function resolveAutoPreferredWidth(devicePixelRatio) {
@@ -41,15 +41,19 @@ function resolvePreferredWidthByPreset(qualityPreset, devicePixelRatio) {
 }
 
 function resolvePreferredWidth(maxTextureSize, preferredWidth) {
-  const safeMaxTextureSize = Number.isFinite(maxTextureSize) ? maxTextureSize : 2048;
-  const safePreferredWidth = Number.isFinite(preferredWidth) ? preferredWidth : 2048;
+  const safeMaxTextureSize = Number.isFinite(maxTextureSize)
+    ? maxTextureSize
+    : 2048;
+  const safePreferredWidth = Number.isFinite(preferredWidth)
+    ? preferredWidth
+    : 2048;
   const allowedWidth = Math.min(safeMaxTextureSize, safePreferredWidth);
 
   return EQUIRECTANGULAR_WIDTHS.find((width) => width <= allowedWidth) ?? 512;
 }
 
 function createTextureCanvas(width, height) {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
 
@@ -58,14 +62,16 @@ function createTextureCanvas(width, height) {
 
 function drawResizedImage(image, width, height) {
   const canvas = createTextureCanvas(width, height);
-  const context = canvas.getContext('2d', { alpha: true });
+  const context = canvas.getContext("2d", { alpha: true });
 
   if (!context) {
-    throw new Error('Unable to create 2D canvas context for texture processing.');
+    throw new Error(
+      "Unable to create 2D canvas context for texture processing.",
+    );
   }
 
   context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = 'high';
+  context.imageSmoothingQuality = "high";
   context.clearRect(0, 0, width, height);
   context.drawImage(image, 0, 0, width, height);
 
@@ -75,8 +81,7 @@ function drawResizedImage(image, width, height) {
 function configureTexture(texture, maxAnisotropy, colorSpace = null) {
   const { width = 0, height = 0 } = texture.image ?? {};
   const isPowerOfTwoTexture =
-    THREE.MathUtils.isPowerOfTwo(width) &&
-    THREE.MathUtils.isPowerOfTwo(height);
+    THREE.MathUtils.isPowerOfTwo(width) && THREE.MathUtils.isPowerOfTwo(height);
 
   if (colorSpace) {
     texture.colorSpace = colorSpace;
@@ -113,11 +118,11 @@ function createResizedTexture(baseTexture, width, height) {
 export function getEarthTextureDimensions(
   maxTextureSize,
   devicePixelRatio = 1,
-  qualityPreset = 'auto'
+  qualityPreset = "auto",
 ) {
   const preferredWidth = resolvePreferredWidthByPreset(
     qualityPreset,
-    devicePixelRatio
+    devicePixelRatio,
   );
   const width = resolvePreferredWidth(maxTextureSize, preferredWidth);
 
@@ -134,9 +139,9 @@ export async function loadAdaptiveEquirectangularTexture(
     maxAnisotropy,
     maxTextureSize,
     devicePixelRatio = 1,
-    qualityPreset = 'auto',
+    qualityPreset = "auto",
     colorSpace = null,
-  }
+  },
 ) {
   const candidatePaths = Array.isArray(paths) ? paths : [paths];
   let baseTexture = null;
@@ -152,17 +157,16 @@ export async function loadAdaptiveEquirectangularTexture(
   }
 
   if (!baseTexture) {
-    throw lastError ?? new Error('Unable to load any candidate texture.');
+    throw lastError ?? new Error("Unable to load any candidate texture.");
   }
 
   const { width, height } = getEarthTextureDimensions(
     maxTextureSize,
     devicePixelRatio,
-    qualityPreset
+    qualityPreset,
   );
   const needsResize =
-    baseTexture.image?.width !== width ||
-    baseTexture.image?.height !== height;
+    baseTexture.image?.width !== width || baseTexture.image?.height !== height;
 
   const texture = needsResize
     ? createResizedTexture(baseTexture, width, height)

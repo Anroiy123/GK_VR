@@ -230,7 +230,7 @@ export class SeasonSystem {
     this.seasonState = CelestialCalculator.getSeasonState(
       getRepresentativeDate(this.activeMonthIndex),
     );
-    this.sunlightMultiplier = 1.4;
+    this.sunlightMultiplier = 1.0;
 
     this.orbitRing = createOrbitRing(ORBIT_RADIUS);
     this.earthOrbitPivot = new THREE.Group();

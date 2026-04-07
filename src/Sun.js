@@ -5,7 +5,7 @@ import { DEFAULT_SUN_PRESET } from "./SunPresets.js";
 const CINEMATIC_SUN_TEXTURE_PATH = "NewTextures/8k_sun.jpg";
 const MIN_SUNLIGHT_MULTIPLIER = 0.5;
 const MAX_SUNLIGHT_MULTIPLIER = 3;
-const DEFAULT_SUNLIGHT_MULTIPLIER = 1.4;
+const DEFAULT_SUNLIGHT_MULTIPLIER = 1.0;
 
 async function loadCinematicSunTexture(textureLoader, maxAnisotropy = 1) {
   const texture = await textureLoader.loadAsync(CINEMATIC_SUN_TEXTURE_PATH);

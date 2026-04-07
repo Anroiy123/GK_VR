@@ -157,7 +157,9 @@ export class SceneManager {
       this.countryNamesVisible = !this.countryNamesVisible;
       this.applyCountryOverlayVisibility();
       this.syncUiState();
-      this.audioManager?.playUiPress(this.countryNamesVisible ? "success" : "back");
+      this.audioManager?.playUiPress(
+        this.countryNamesVisible ? "success" : "back",
+      );
     };
 
     this.ui.onCloudsToggle = () => {
@@ -278,7 +280,8 @@ export class SceneManager {
     try {
       await this.seasonSystem.init(this.textureLoader, textureQuality);
     } catch (error) {
-      this.seasonInitError = error instanceof Error ? error.message : String(error);
+      this.seasonInitError =
+        error instanceof Error ? error.message : String(error);
     }
 
     const atmosphereMesh = this.atmosphere.create(this.camera);
@@ -324,13 +327,11 @@ export class SceneManager {
         return null;
       });
 
-    this.countryInitPromise = this.countryOverlay
-      .init()
-      .catch((error) => {
-        const message = error instanceof Error ? error.message : String(error);
-        console.warn("Country overlay unavailable:", message);
-        return null;
-      });
+    this.countryInitPromise = this.countryOverlay.init().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("Country overlay unavailable:", message);
+      return null;
+    });
 
     this.webxr.init();
     this.syncUiState();
@@ -373,8 +374,14 @@ export class SceneManager {
         return;
       }
 
-      window.removeEventListener("pointerdown", this.handleFirstUserAudioGesture);
-      window.removeEventListener("touchstart", this.handleFirstUserAudioGesture);
+      window.removeEventListener(
+        "pointerdown",
+        this.handleFirstUserAudioGesture,
+      );
+      window.removeEventListener(
+        "touchstart",
+        this.handleFirstUserAudioGesture,
+      );
       window.removeEventListener("keydown", this.handleFirstUserAudioGesture);
       this.handleFirstUserAudioGesture = null;
     };
@@ -398,7 +405,8 @@ export class SceneManager {
   applySunPreset(preset) {
     this.currentSunPreset = preset ?? DEFAULT_SUN_PRESET;
     this.baseSunLightIntensity = this.currentSunPreset.directionalLightBase;
-    this.renderer.toneMappingExposure = this.currentSunPreset.toneMappingExposure;
+    this.renderer.toneMappingExposure =
+      this.currentSunPreset.toneMappingExposure;
     this.sun.applyPreset(this.currentSunPreset);
     this.atmosphere.applyPreset(this.currentSunPreset);
     this.seasonSystem.applySunPreset(this.currentSunPreset);
@@ -410,7 +418,10 @@ export class SceneManager {
 
   async applyTextureQualityPreset(presetId) {
     const nextPreset = normalizeEarthTextureQualityPreset(presetId);
-    if (nextPreset === this.textureQualityPreset || this.isTextureQualityReloading) {
+    if (
+      nextPreset === this.textureQualityPreset ||
+      this.isTextureQualityReloading
+    ) {
       return;
     }
 
@@ -424,7 +435,7 @@ export class SceneManager {
       if (this.textureLoader && this.earth.mesh) {
         await this.earth.reloadSurfaceTextures(
           this.textureLoader,
-          this.getTextureQuality()
+          this.getTextureQuality(),
         );
       }
       this.audioManager?.playUiPress("default");
@@ -448,7 +459,8 @@ export class SceneManager {
 
   applyCountryOverlayVisibility() {
     const shouldShow =
-      this.countryNamesVisible && this.isCountryOverlayAllowed(this.earthViewMode);
+      this.countryNamesVisible &&
+      this.isCountryOverlayAllowed(this.earthViewMode);
     this.countryOverlay.setVisible(shouldShow);
   }
 
@@ -706,7 +718,9 @@ export class SceneManager {
     }
 
     this.ui.hideSeasonPanel();
-    this.interaction.setDesktopMode(this.markers.isVisible ? "markers" : "none");
+    this.interaction.setDesktopMode(
+      this.markers.isVisible ? "markers" : "none",
+    );
   }
 
   handleClimatePointer(raycaster) {
@@ -714,7 +728,10 @@ export class SceneManager {
       return false;
     }
 
-    const handled = this.climateExplorer.handlePointer(raycaster, this.earth.mesh);
+    const handled = this.climateExplorer.handlePointer(
+      raycaster,
+      this.earth.mesh,
+    );
     if (handled) {
       this.audioManager?.playMarkerSelect();
     }
