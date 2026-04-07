@@ -231,6 +231,14 @@ export class SceneManager {
       this.audioManager?.playUiPress("default");
     };
 
+    this.ui.onAudioVolumeChange = (volume) => {
+      if (!this.audioManager) {
+        return;
+      }
+
+      this.audioManager.setUserVolume(volume);
+    };
+
     this.webxr.onSessionStart = () => {
       this.desktopEarthViewModeBeforeVR = this.earthViewMode;
       this.setEarthViewMode(DEFAULT_EARTH_VIEW_MODE);
@@ -299,6 +307,7 @@ export class SceneManager {
     this.scene.add(this.seasonSystem.root);
 
     this.audioManager = new AudioManager(this.camera);
+    this.ui.setAudioVolume(this.audioManager.getUserVolume());
     this.interaction.setAudioManager(this.audioManager);
     this.setupAutoAudioStart();
 
@@ -645,7 +654,7 @@ export class SceneManager {
 
     this.ui.showClimateStatus(
       meta.title,
-      "Bấm lên bề mặt Trái Đất để đọc số liệu tại điểm, hoặc chọn hotspot đang phát sáng.",
+      "Bấm lên bề mặt Trái Đất để đọc số liệu tại điểm.",
       meta.label,
     );
   }

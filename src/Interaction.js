@@ -39,6 +39,11 @@ export class Interaction {
       aPressed: false,
       bPressed: false,
     };
+    this.pendingClimatePointer = false;
+    this.pendingClimateMoved = false;
+    this.pendingClimateStartX = 0;
+    this.pendingClimateStartY = 0;
+    this.climateClickMoveThreshold = 6;
     this.vrButtonMap = {
       profileKey: "none",
       aIndex: 4,
@@ -48,6 +53,18 @@ export class Interaction {
     this.renderer.domElement.addEventListener(
       "pointerdown",
       this.onPointerDown.bind(this),
+    );
+    this.renderer.domElement.addEventListener(
+      "pointermove",
+      this.onPointerMove.bind(this),
+    );
+    this.renderer.domElement.addEventListener(
+      "pointerup",
+      this.onPointerUp.bind(this),
+    );
+    this.renderer.domElement.addEventListener(
+      "pointercancel",
+      this.onPointerCancel.bind(this),
     );
     this.setupVRControllers();
     this.setupVRControlPanel();
@@ -435,14 +452,17 @@ export class Interaction {
       return;
     }
 
+    if (this.desktopMode === "climate") {
+      this.pendingClimatePointer = true;
+      this.pendingClimateMoved = false;
+      this.pendingClimateStartX = event.clientX;
+      this.pendingClimateStartY = event.clientY;
+      return;
+    }
+
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);
-
-    if (this.desktopMode === "climate") {
-      this.onClimatePointer?.(this.raycaster);
-      return;
-    }
 
     if (this.desktopMode === "markers") {
       this.handleMarkerSelection();
@@ -450,6 +470,48 @@ export class Interaction {
     }
 
     this.clearSelection();
+  }
+
+  onPointerMove(event) {
+    if (!this.pendingClimatePointer) {
+      return;
+    }
+
+    const deltaX = event.clientX - this.pendingClimateStartX;
+    const deltaY = event.clientY - this.pendingClimateStartY;
+    const distance = Math.hypot(deltaX, deltaY);
+
+    if (distance > this.climateClickMoveThreshold) {
+      this.pendingClimateMoved = true;
+    }
+  }
+
+  onPointerUp(event) {
+    if (!this.pendingClimatePointer) {
+      return;
+    }
+
+    const shouldHandleClimateClick =
+      !this.isVR &&
+      event.button === 0 &&
+      this.desktopMode === "climate" &&
+      !this.pendingClimateMoved;
+
+    this.pendingClimatePointer = false;
+
+    if (!shouldHandleClimateClick) {
+      return;
+    }
+
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    this.onClimatePointer?.(this.raycaster);
+  }
+
+  onPointerCancel() {
+    this.pendingClimatePointer = false;
+    this.pendingClimateMoved = false;
   }
 
   onVRSelect(event) {

@@ -19,6 +19,7 @@ export class AudioManager {
     this.isAudioUnlocked = false;
     this.hasPlaybackStarted = false;
     this.isAudioEnabled = false;
+    this.userVolume = DEFAULT_MASTER_VOLUME;
 
     this.masterGain = this.audioContext.createGain();
     this.masterGain.gain.value = SILENT_VOLUME;
@@ -76,6 +77,23 @@ export class AudioManager {
     this.listener.setMasterVolume(volume);
   }
 
+  getUserVolume() {
+    return this.userVolume;
+  }
+
+  setUserVolume(volume) {
+    const safeVolume = Number.isFinite(volume)
+      ? Math.min(1, Math.max(0, volume))
+      : DEFAULT_MASTER_VOLUME;
+    this.userVolume = safeVolume;
+
+    if (this.isAudioUnlocked) {
+      this.setMasterVolume(safeVolume);
+    }
+
+    return this.userVolume;
+  }
+
   setSoundtrackEnabled(isEnabled) {
     this.isAudioEnabled = isEnabled;
     this.soundtrackGain.gain.setValueAtTime(
@@ -92,7 +110,7 @@ export class AudioManager {
     }
 
     this.isAudioUnlocked = true;
-    this.setMasterVolume(DEFAULT_MASTER_VOLUME);
+    this.setMasterVolume(this.userVolume);
     return true;
   }
 

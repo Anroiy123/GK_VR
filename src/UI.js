@@ -29,6 +29,8 @@ export class UI {
     this.speedValueEl = document.getElementById("speed-value");
     this.sunlightSlider = document.getElementById("sunlight-slider");
     this.sunlightValueEl = document.getElementById("sunlight-value");
+    this.audioVolumeSlider = document.getElementById("audio-volume-slider");
+    this.audioVolumeValueEl = document.getElementById("audio-volume-value");
     this.sunPresetButtons = Array.from(
       document.querySelectorAll("[data-sun-preset]"),
     );
@@ -120,9 +122,11 @@ export class UI {
     this.onControlsToggle = null;
     this.onSpeedChange = null;
     this.onSunlightChange = null;
+    this.onAudioVolumeChange = null;
 
     this.speedMultiplier = 1;
     this.sunlightMultiplier = 1.0;
+    this.audioVolume = 1;
     this.sunPreset = DEFAULT_SUN_PRESET_ID;
     this.earthViewMode = "globe";
     this.textureQuality = "auto";
@@ -146,6 +150,12 @@ export class UI {
         this.sunlightValueEl.textContent = `${this.sunlightMultiplier.toFixed(1)}x`;
       }
       this.onSunlightChange?.(this.sunlightMultiplier);
+    });
+
+    this.audioVolumeSlider?.addEventListener("input", () => {
+      const nextVolume = parseFloat(this.audioVolumeSlider.value);
+      this.setAudioVolume(nextVolume);
+      this.onAudioVolumeChange?.(this.audioVolume);
     });
 
     this.climateMonthSlider?.addEventListener("input", () => {
@@ -246,6 +256,7 @@ export class UI {
     this.setTextureQuality(this.textureQuality);
     this.setControlLocks({});
     this.setSunPreset(this.sunPreset);
+    this.setAudioVolume(this.audioVolume);
     this.hideSeasonPanel();
   }
 
@@ -306,6 +317,21 @@ export class UI {
   setMuteBtnText(isAudible) {
     if (this.muteBtn) {
       this.muteBtn.textContent = isAudible ? "🔊 Âm thanh" : "🔇 Âm thanh";
+    }
+  }
+
+  setAudioVolume(volume) {
+    const safeVolume = Number.isFinite(volume)
+      ? Math.min(1, Math.max(0, volume))
+      : 1;
+    this.audioVolume = safeVolume;
+
+    if (this.audioVolumeSlider) {
+      this.audioVolumeSlider.value = safeVolume.toFixed(2);
+    }
+
+    if (this.audioVolumeValueEl) {
+      this.audioVolumeValueEl.textContent = `${Math.round(safeVolume * 100)}%`;
     }
   }
 

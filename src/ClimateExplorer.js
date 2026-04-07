@@ -760,10 +760,8 @@ export class ClimateExplorer {
   }
 
   updateHotspotVisibility() {
-    const activeMonth = this.activeMonthIndex + 1;
-
     this.hotspotEntries.forEach((entry) => {
-      entry.group.visible = this.isVisible && this.isInsightActive(entry.insight);
+      entry.group.visible = false;
     });
   }
 

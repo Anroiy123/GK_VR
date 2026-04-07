@@ -115,6 +115,7 @@ body {
 
 #speed-control,
 #sunlight-control,
+#audio-volume-control,
 #earth-view-control,
 #texture-quality-control,
 #climate-controls {
@@ -303,6 +304,7 @@ body {
 
 #speed-slider,
 #sunlight-slider,
+#audio-volume-slider,
 #climate-month-slider {
   flex: 1;
   width: 100%;
@@ -311,11 +313,12 @@ body {
 }
 
 #speed-value,
-#sunlight-value {
+#sunlight-value,
+#audio-volume-value {
   font-size: 12px;
   color: #64b4ff;
   font-weight: 600;
-  min-width: 32px;
+  min-width: 40px;
 }
 
 #climate-legend {
