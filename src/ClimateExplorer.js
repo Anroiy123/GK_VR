@@ -165,15 +165,18 @@ function interpretValue(variable, value) {
   }
 
   if (variable === "temperature") {
-    if (value < -10) return "Rất lạnh, đặc trưng cho vùng cực hoặc lục địa mùa đông.";
-    if (value < 10) return "Khá lạnh, phù hợp với vùng ôn đới lạnh hoặc cao nguyên.";
+    if (value < -10)
+      return "Rất lạnh, đặc trưng cho vùng cực hoặc lục địa mùa đông.";
+    if (value < 10)
+      return "Khá lạnh, phù hợp với vùng ôn đới lạnh hoặc cao nguyên.";
     if (value < 22) return "Ôn hòa, gần ngưỡng dễ chịu cho nhiều vùng dân cư.";
     if (value < 32) return "Nóng, thường thấy ở vùng nhiệt đới hoặc cận nhiệt.";
     return "Rất nóng, dễ xuất hiện ở sa mạc và các vùng khô nóng.";
   }
 
   if (value < 40) return "Rất khô, mưa ít và thường thiếu ẩm bề mặt.";
-  if (value < 100) return "Khá khô, lượng mưa thấp hơn mức điển hình của vùng ẩm.";
+  if (value < 100)
+    return "Khá khô, lượng mưa thấp hơn mức điển hình của vùng ẩm.";
   if (value < 180) return "Mưa theo mùa ở mức trung bình.";
   if (value < 280) return "Ẩm, có nguồn ẩm tương đối dồi dào.";
   return "Mưa nhiều, đặc trưng của gió mùa mạnh hoặc rừng mưa nhiệt đới.";
@@ -342,8 +345,7 @@ export class ClimateExplorer {
   createHotspotEntry(insight) {
     const group = new THREE.Group();
     const normal = latLonToVector3(insight.lat, insight.lon, 1).normalize();
-    const color =
-      insight.variable === "temperature" ? 0xffb36c : 0x67d6ff;
+    const color = insight.variable === "temperature" ? 0xffb36c : 0x67d6ff;
 
     const stem = new THREE.Mesh(
       new THREE.CylinderGeometry(0.004, 0.004, 0.12, 8),
@@ -394,21 +396,22 @@ export class ClimateExplorer {
   async init(textureLoader) {
     this.textureLoader = textureLoader;
 
-    const [metadataResult, insightsResult, borderResult] = await Promise.allSettled([
-      fetch("climate/metadata.json").then((response) => {
-        if (!response.ok) {
-          throw new Error(`Climate metadata not found (${response.status}).`);
-        }
-        return response.json();
-      }),
-      fetch("climate/insights.json").then((response) => {
-        if (!response.ok) {
-          throw new Error(`Climate insights not found (${response.status}).`);
-        }
-        return response.json();
-      }),
-      this.loadCountryBorders(),
-    ]);
+    const [metadataResult, insightsResult, borderResult] =
+      await Promise.allSettled([
+        fetch("climate/metadata.json").then((response) => {
+          if (!response.ok) {
+            throw new Error(`Climate metadata not found (${response.status}).`);
+          }
+          return response.json();
+        }),
+        fetch("climate/insights.json").then((response) => {
+          if (!response.ok) {
+            throw new Error(`Climate insights not found (${response.status}).`);
+          }
+          return response.json();
+        }),
+        this.loadCountryBorders(),
+      ]);
 
     if (
       metadataResult.status === "fulfilled" &&
@@ -506,7 +509,12 @@ export class ClimateExplorer {
         entry.texture = texture;
         entry.width = canvas.width;
         entry.height = canvas.height;
-        entry.imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        entry.imageData = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        ).data;
         entry.status = "ready";
 
         if (this.currentTextureKey === key) {
@@ -538,7 +546,10 @@ export class ClimateExplorer {
     const key = this.getTextureKey(this.activeVariable, this.activeMonthIndex);
     this.currentTextureKey = key;
 
-    const entry = this.ensureTexture(this.activeVariable, this.activeMonthIndex);
+    const entry = this.ensureTexture(
+      this.activeVariable,
+      this.activeMonthIndex,
+    );
     if (!entry) {
       this.currentTextureState = "loading";
       this.currentTextureError = null;
@@ -552,7 +563,8 @@ export class ClimateExplorer {
 
   applyTextureEntry(entry) {
     if (!entry) {
-      this.overlayMesh.material.uniforms.climateMap.value = this.placeholderTexture;
+      this.overlayMesh.material.uniforms.climateMap.value =
+        this.placeholderTexture;
       this.currentTextureState = "loading";
       this.currentTextureError = null;
       return;
@@ -578,8 +590,10 @@ export class ClimateExplorer {
   }
 
   getCurrentVariableMeta() {
-    return this.metadata.variables?.[this.activeVariable] ??
-      DEFAULT_CLIMATE_METADATA.variables.temperature;
+    return (
+      this.metadata.variables?.[this.activeVariable] ??
+      DEFAULT_CLIMATE_METADATA.variables.temperature
+    );
   }
 
   getMonthLabel(monthIndex = this.activeMonthIndex) {
@@ -642,7 +656,9 @@ export class ClimateExplorer {
       try {
         const response = await fetch(source);
         if (!response.ok) {
-          throw new Error(`Country borders not found (${response.status}) at ${source}.`);
+          throw new Error(
+            `Country borders not found (${response.status}) at ${source}.`,
+          );
         }
 
         const geojson = await response.json();
@@ -834,8 +850,14 @@ export class ClimateExplorer {
     const uv = latLonToUv(lat, lon);
     const safeU = THREE.MathUtils.euclideanModulo(uv.x, 1);
     const safeV = THREE.MathUtils.clamp(uv.y, 0, 1);
-    const x = Math.min(entry.width - 1, Math.max(0, Math.round(safeU * (entry.width - 1))));
-    const y = Math.min(entry.height - 1, Math.max(0, Math.round(safeV * (entry.height - 1))));
+    const x = Math.min(
+      entry.width - 1,
+      Math.max(0, Math.round(safeU * (entry.width - 1))),
+    );
+    const y = Math.min(
+      entry.height - 1,
+      Math.max(0, Math.round(safeV * (entry.height - 1))),
+    );
     const index = (y * entry.width + x) * 4;
     const normalizedValue = entry.imageData[index] / 255;
     const value =
@@ -916,7 +938,10 @@ export class ClimateExplorer {
       return false;
     }
 
-    const hotspotHits = raycaster.intersectObjects(this.hotspotPickTargets, false);
+    const hotspotHits = raycaster.intersectObjects(
+      this.hotspotPickTargets,
+      false,
+    );
     if (hotspotHits.length) {
       const hotspotId = hotspotHits[0].object.userData.hotspotId;
       this.selectHotspot(hotspotId);
