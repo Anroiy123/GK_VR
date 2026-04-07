@@ -11,8 +11,7 @@ async function loadCinematicSunTexture(textureLoader, maxAnisotropy = 1) {
   const texture = await textureLoader.loadAsync(CINEMATIC_SUN_TEXTURE_PATH);
   const { width = 0, height = 0 } = texture.image ?? {};
   const isPowerOfTwoTexture =
-    THREE.MathUtils.isPowerOfTwo(width) &&
-    THREE.MathUtils.isPowerOfTwo(height);
+    THREE.MathUtils.isPowerOfTwo(width) && THREE.MathUtils.isPowerOfTwo(height);
 
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = maxAnisotropy;
@@ -65,7 +64,10 @@ function getSurfaceIntensity(multiplier, surfaceConfig) {
     (clampSunlightMultiplier(multiplier) - MIN_SUNLIGHT_MULTIPLIER) /
     (MAX_SUNLIGHT_MULTIPLIER - MIN_SUNLIGHT_MULTIPLIER);
 
-  return surfaceConfig.intensityBase + normalizedBrightness * surfaceConfig.intensityBoost;
+  return (
+    surfaceConfig.intensityBase +
+    normalizedBrightness * surfaceConfig.intensityBoost
+  );
 }
 
 function setSpriteScaleAndOpacity(sprite, scale, opacity) {
@@ -168,20 +170,18 @@ function createOrganicGlowTexture({
       (blobSizeRange[0] +
         (blobSizeRange[1] - blobSizeRange[0]) * pseudoRandom(i + 29));
     const alpha =
-      alphaRange[0] +
-      (alphaRange[1] - alphaRange[0]) * pseudoRandom(i + 41);
+      alphaRange[0] + (alphaRange[1] - alphaRange[0]) * pseudoRandom(i + 41);
     const color = colors[i % colors.length];
-    const gradient = context.createRadialGradient(
-      x,
-      y,
-      0,
-      x,
-      y,
-      blobRadius,
-    );
+    const gradient = context.createRadialGradient(x, y, 0, x, y, blobRadius);
 
-    gradient.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`);
-    gradient.addColorStop(0.35, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha * 0.45})`);
+    gradient.addColorStop(
+      0,
+      `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`,
+    );
+    gradient.addColorStop(
+      0.35,
+      `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha * 0.45})`,
+    );
     gradient.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
 
     context.fillStyle = gradient;
@@ -309,7 +309,12 @@ function createRayBurstTexture() {
     context.filter = `blur(${blur}px)`;
     context.globalCompositeOperation = "lighter";
 
-    const gradient = context.createLinearGradient(innerRadius, 0, outerRadius, 0);
+    const gradient = context.createLinearGradient(
+      innerRadius,
+      0,
+      outerRadius,
+      0,
+    );
     gradient.addColorStop(0, `rgba(255, 248, 228, ${coreAlpha})`);
     gradient.addColorStop(0.18, `rgba(255, 224, 160, ${midAlpha})`);
     gradient.addColorStop(0.55, `rgba(255, 182, 94, ${midAlpha * 0.42})`);
@@ -318,12 +323,7 @@ function createRayBurstTexture() {
     context.fillStyle = gradient;
     context.beginPath();
     context.moveTo(innerRadius, -spread * 0.5);
-    context.quadraticCurveTo(
-      outerRadius * 0.58,
-      -spread,
-      outerRadius,
-      0,
-    );
+    context.quadraticCurveTo(outerRadius * 0.58, -spread, outerRadius, 0);
     context.quadraticCurveTo(
       outerRadius * 0.58,
       spread,
@@ -581,7 +581,10 @@ export class Sun {
     const raysTexture = createRayBurstTexture();
     const haloTexture = createHaloTexture();
     const outerGlowTexture = createOuterGlowTexture();
-    this.surfaceTexture = await loadCinematicSunTexture(textureLoader, maxAnisotropy);
+    this.surfaceTexture = await loadCinematicSunTexture(
+      textureLoader,
+      maxAnisotropy,
+    );
     const glowStrength = getGlowStrength(this.sunlightMultiplier);
     const { sun: sunConfig } = this.preset;
 
@@ -725,7 +728,8 @@ export class Sun {
     this.mesh.material.uniforms.coreBoost.value = sunConfig.surface.coreBoost;
     this.mesh.material.uniforms.rimPower.value = sunConfig.surface.rimPower;
     this.mesh.material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
-    this.mesh.material.uniforms.textureBlend.value = sunConfig.surface.textureBlend ?? 0;
+    this.mesh.material.uniforms.textureBlend.value =
+      sunConfig.surface.textureBlend ?? 0;
     this.mesh.material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
       sunConfig.surface,
@@ -1012,7 +1016,8 @@ export class Sun {
           sunConfig.glow.coronaOpacityBase,
           sunConfig.glow.coronaOpacityBoost,
           glowStrength,
-        ) * (this.isVRMode ? 0.6 : 0.34) +
+        ) *
+          (this.isVRMode ? 0.6 : 0.34) +
           Math.sin(this.elapsedTime * 0.72 + 0.3) * 0.01,
         0,
         0.52,
@@ -1076,7 +1081,8 @@ export class Sun {
           sunConfig.glow.outerOpacityBase,
           sunConfig.glow.outerOpacityBoost,
           glowStrength,
-        ) * (this.isVRMode ? 1.22 : 0.72) +
+        ) *
+          (this.isVRMode ? 1.22 : 0.72) +
           Math.sin(this.elapsedTime * 0.48 + 1.4) * 0.006,
         0,
         0.18,

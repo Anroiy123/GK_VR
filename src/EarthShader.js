@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 export const EarthShader = {
   uniforms: {
@@ -147,5 +147,5 @@ export const EarthShader = {
       // Basic tone mapping (simple ACES approximation for shader)
       gl_FragColor.rgb = clamp(gl_FragColor.rgb, 0.0, 1.0);
     }
-  `
+  `,
 };
