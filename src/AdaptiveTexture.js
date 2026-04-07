@@ -1,6 +1,44 @@
 import * as THREE from 'three';
 
-const EQUIRECTANGULAR_WIDTHS = [8192, 4096, 2048, 1024, 512];
+const EQUIRECTANGULAR_WIDTHS = [16384, 8192, 4096, 2048, 1024, 512];
+const EARTH_TEXTURE_QUALITY_WIDTHS = {
+  auto: null,
+  maximum: 16384,
+  high: 8192,
+  balanced: 4096,
+  low: 2048,
+};
+
+export const EARTH_TEXTURE_QUALITY_OPTIONS = Object.freeze([
+  { id: 'auto', label: 'Auto' },
+  { id: 'maximum', label: 'Max' },
+  { id: 'high', label: 'High' },
+  { id: 'balanced', label: 'Mid' },
+  { id: 'low', label: 'Low' },
+]);
+
+const EARTH_TEXTURE_QUALITY_OPTION_IDS = new Set(
+  EARTH_TEXTURE_QUALITY_OPTIONS.map((option) => option.id)
+);
+
+export function normalizeEarthTextureQualityPreset(preset) {
+  return EARTH_TEXTURE_QUALITY_OPTION_IDS.has(preset) ? preset : 'auto';
+}
+
+function resolveAutoPreferredWidth(devicePixelRatio) {
+  return devicePixelRatio > 1.25 ? 8192 : 4096;
+}
+
+function resolvePreferredWidthByPreset(qualityPreset, devicePixelRatio) {
+  const preset = normalizeEarthTextureQualityPreset(qualityPreset);
+  const presetWidth = EARTH_TEXTURE_QUALITY_WIDTHS[preset];
+
+  if (Number.isFinite(presetWidth)) {
+    return presetWidth;
+  }
+
+  return resolveAutoPreferredWidth(devicePixelRatio);
+}
 
 function resolvePreferredWidth(maxTextureSize, preferredWidth) {
   const safeMaxTextureSize = Number.isFinite(maxTextureSize) ? maxTextureSize : 2048;
@@ -72,8 +110,15 @@ function createResizedTexture(baseTexture, width, height) {
   return resizedTexture;
 }
 
-export function getEarthTextureDimensions(maxTextureSize, devicePixelRatio = 1) {
-  const preferredWidth = devicePixelRatio > 1.25 ? 8192 : 4096;
+export function getEarthTextureDimensions(
+  maxTextureSize,
+  devicePixelRatio = 1,
+  qualityPreset = 'auto'
+) {
+  const preferredWidth = resolvePreferredWidthByPreset(
+    qualityPreset,
+    devicePixelRatio
+  );
   const width = resolvePreferredWidth(maxTextureSize, preferredWidth);
 
   return {
@@ -89,6 +134,7 @@ export async function loadAdaptiveEquirectangularTexture(
     maxAnisotropy,
     maxTextureSize,
     devicePixelRatio = 1,
+    qualityPreset = 'auto',
     colorSpace = null,
   }
 ) {
@@ -109,7 +155,11 @@ export async function loadAdaptiveEquirectangularTexture(
     throw lastError ?? new Error('Unable to load any candidate texture.');
   }
 
-  const { width, height } = getEarthTextureDimensions(maxTextureSize, devicePixelRatio);
+  const { width, height } = getEarthTextureDimensions(
+    maxTextureSize,
+    devicePixelRatio,
+    qualityPreset
+  );
   const needsResize =
     baseTexture.image?.width !== width ||
     baseTexture.image?.height !== height;

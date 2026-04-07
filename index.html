@@ -75,6 +75,55 @@
               </button>
             </div>
           </div>
+          <div id="texture-quality-control" class="control-group">
+            <label>Độ phân giải texture</label>
+            <div
+              class="segmented-control segmented-control--5"
+              role="group"
+              aria-label="Chất lượng texture Trái Đất"
+            >
+              <button
+                type="button"
+                class="texture-quality-btn active"
+                data-earth-quality="auto"
+                aria-pressed="true"
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                class="texture-quality-btn"
+                data-earth-quality="maximum"
+                aria-pressed="false"
+              >
+                Max
+              </button>
+              <button
+                type="button"
+                class="texture-quality-btn"
+                data-earth-quality="high"
+                aria-pressed="false"
+              >
+                High
+              </button>
+              <button
+                type="button"
+                class="texture-quality-btn"
+                data-earth-quality="balanced"
+                aria-pressed="false"
+              >
+                Mid
+              </button>
+              <button
+                type="button"
+                class="texture-quality-btn"
+                data-earth-quality="low"
+                aria-pressed="false"
+              >
+                Low
+              </button>
+            </div>
+          </div>
           <div id="speed-control" class="control-group">
             <label for="speed-slider">Tốc độ quay</label>
             <div class="slider-row">
@@ -126,52 +175,12 @@
                 <span id="climate-legend-max">--</span>
               </div>
             </div>
-            <div id="season-event-controls" hidden>
-              <p class="season-event-title">Mốc nhanh</p>
-              <div
-                class="segmented-control segmented-control--2"
-                role="group"
-                aria-label="Mốc mùa vụ"
-              >
-                <button
-                  type="button"
-                  class="season-event-btn"
-                  data-season-event="march-equinox"
-                  aria-pressed="false"
-                >
-                  Xuân phân
-                </button>
-                <button
-                  type="button"
-                  class="season-event-btn"
-                  data-season-event="june-solstice"
-                  aria-pressed="false"
-                >
-                  Hạ chí
-                </button>
-                <button
-                  type="button"
-                  class="season-event-btn"
-                  data-season-event="september-equinox"
-                  aria-pressed="false"
-                >
-                  Thu phân
-                </button>
-                <button
-                  type="button"
-                  class="season-event-btn"
-                  data-season-event="december-solstice"
-                  aria-pressed="false"
-                >
-                  Đông chí
-                </button>
-              </div>
-            </div>
           </div>
           <div class="action-grid">
             <button id="iss-toggle">🛰️ ISS View</button>
             <button id="mute-btn">🔇 Âm thanh</button>
             <button id="markers-toggle">📍 Hiện địa danh</button>
+            <button id="countries-toggle">🗺️ Hiện tên quốc gia</button>
             <button id="clouds-toggle">☁️ Tắt mây</button>
             <button id="atmosphere-toggle">🌫️ Tắt khí quyển</button>
           </div>

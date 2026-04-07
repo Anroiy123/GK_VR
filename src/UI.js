@@ -3,6 +3,10 @@ import {
   SUN_PRESET_OPTIONS,
   getSunPreset,
 } from "./SunPresets.js";
+import {
+  EARTH_TEXTURE_QUALITY_OPTIONS,
+  normalizeEarthTextureQualityPreset,
+} from "./AdaptiveTexture.js";
 
 const DEFAULT_MONTH_LABELS = [
   "Tháng 1",
@@ -31,6 +35,9 @@ export class UI {
     this.earthViewButtons = Array.from(
       document.querySelectorAll("[data-earth-view]"),
     );
+    this.textureQualityButtons = Array.from(
+      document.querySelectorAll("[data-earth-quality]"),
+    );
     this.fpsCounter = document.getElementById("fps-counter");
     this.simTime = document.getElementById("sim-time");
     this.vrStatus = document.getElementById("vr-status");
@@ -40,6 +47,7 @@ export class UI {
     this.issToggleBtn = document.getElementById("iss-toggle");
     this.muteBtn = document.getElementById("mute-btn");
     this.markersToggleBtn = document.getElementById("markers-toggle");
+    this.countriesToggleBtn = document.getElementById("countries-toggle");
     this.cloudsToggleBtn = document.getElementById("clouds-toggle");
     this.atmosphereToggleBtn = document.getElementById("atmosphere-toggle");
     this.climateControls = document.getElementById("climate-controls");
@@ -101,12 +109,14 @@ export class UI {
     this.onISSToggle = null;
     this.onMuteToggle = null;
     this.onMarkersToggle = null;
+    this.onCountriesToggle = null;
     this.onCloudsToggle = null;
     this.onAtmosphereToggle = null;
     this.onEarthViewModeChange = null;
     this.onClimateMonthChange = null;
     this.onSeasonEventSelect = null;
     this.onSunPresetChange = null;
+    this.onTextureQualityChange = null;
     this.onControlsToggle = null;
     this.onSpeedChange = null;
     this.onSunlightChange = null;
@@ -115,6 +125,7 @@ export class UI {
     this.sunlightMultiplier = 1.4;
     this.sunPreset = DEFAULT_SUN_PRESET_ID;
     this.earthViewMode = "globe";
+    this.textureQuality = "auto";
     this.controlsCollapsed = false;
     this.frameCount = 0;
     this.lastFpsUpdate = 0;
@@ -167,6 +178,21 @@ export class UI {
       });
     });
 
+    this.textureQualityButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextPreset = normalizeEarthTextureQualityPreset(
+          button.dataset.earthQuality,
+        );
+
+        if (nextPreset === this.textureQuality) {
+          return;
+        }
+
+        this.setTextureQuality(nextPreset);
+        this.onTextureQualityChange?.(nextPreset);
+      });
+    });
+
     this.seasonEventButtons.forEach((button) => {
       button.addEventListener("click", () => {
         const eventKey = button.dataset.seasonEvent;
@@ -191,6 +217,10 @@ export class UI {
       this.onMarkersToggle?.();
     });
 
+    this.countriesToggleBtn?.addEventListener("click", () => {
+      this.onCountriesToggle?.();
+    });
+
     this.cloudsToggleBtn?.addEventListener("click", () => {
       this.onCloudsToggle?.();
     });
@@ -206,12 +236,14 @@ export class UI {
     });
 
     this.setMarkersToggleText(false);
+    this.setCountriesToggleText(false);
     this.setClimateMonth(0);
     this.setExplorerControlsVisible(false);
     this.setExplorerMonthTitle("Tháng dữ liệu");
     this.setClimateLegendVisible(true);
     this.setSeasonEventControlsVisible(false);
     this.setEarthViewMode(this.earthViewMode);
+    this.setTextureQuality(this.textureQuality);
     this.setControlLocks({});
     this.setSunPreset(this.sunPreset);
     this.hideSeasonPanel();
@@ -292,6 +324,14 @@ export class UI {
     }
   }
 
+  setCountriesToggleText(isVisible) {
+    if (this.countriesToggleBtn) {
+      this.countriesToggleBtn.textContent = isVisible
+        ? "🗺️ Ẩn tên quốc gia"
+        : "🗺️ Hiện tên quốc gia";
+    }
+  }
+
   setAtmosphereToggleText(isVisible) {
     if (this.atmosphereToggleBtn) {
       this.atmosphereToggleBtn.textContent = isVisible
@@ -324,6 +364,30 @@ export class UI {
       const isActive = button.dataset.earthView === mode;
       button.setAttribute("aria-pressed", String(isActive));
       button.classList.toggle("active", isActive);
+    });
+  }
+
+  setTextureQuality(presetId) {
+    const normalizedPreset = normalizeEarthTextureQualityPreset(presetId);
+    this.textureQuality = normalizedPreset;
+
+    this.textureQualityButtons.forEach((button) => {
+      const isActive = button.dataset.earthQuality === normalizedPreset;
+      button.setAttribute("aria-pressed", String(isActive));
+      button.classList.toggle("active", isActive);
+      const option = EARTH_TEXTURE_QUALITY_OPTIONS.find(
+        (item) => item.id === button.dataset.earthQuality,
+      );
+      if (option) {
+        button.textContent = option.label;
+      }
+    });
+  }
+
+  setTextureQualityButtonsBusy(isBusy) {
+    this.textureQualityButtons.forEach((button) => {
+      button.disabled = isBusy;
+      button.setAttribute("aria-disabled", String(isBusy));
     });
   }
 
@@ -412,11 +476,13 @@ export class UI {
     cloudsLocked = false,
     atmosphereLocked = false,
     markersLocked = false,
+    countriesLocked = false,
   } = {}) {
     const lockMap = [
       { button: this.cloudsToggleBtn, locked: cloudsLocked },
       { button: this.atmosphereToggleBtn, locked: atmosphereLocked },
       { button: this.markersToggleBtn, locked: markersLocked },
+      { button: this.countriesToggleBtn, locked: countriesLocked },
     ];
 
     lockMap.forEach(({ button, locked }) => {

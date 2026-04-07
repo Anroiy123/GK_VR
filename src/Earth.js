@@ -23,22 +23,39 @@ export class Earth {
     this.flatMapLightingEnabled = false;
   }
 
-  async load(textureLoader, textureQuality) {
-    const { maxAnisotropy, maxTextureSize, devicePixelRatio } = textureQuality;
+  async loadSurfaceTextures(textureLoader, textureQuality) {
+    const {
+      maxAnisotropy,
+      maxTextureSize,
+      devicePixelRatio,
+      qualityPreset = 'auto',
+    } = textureQuality;
+
     const [dayMap, nightMap] = await Promise.all([
       loadAdaptiveEquirectangularTexture(textureLoader, TEXTURE_PATHS.dayMap, {
         maxAnisotropy,
         maxTextureSize,
         devicePixelRatio,
+        qualityPreset,
         colorSpace: THREE.SRGBColorSpace,
       }),
       loadAdaptiveEquirectangularTexture(textureLoader, TEXTURE_PATHS.nightMap, {
         maxAnisotropy,
         maxTextureSize,
         devicePixelRatio,
+        qualityPreset,
         colorSpace: THREE.SRGBColorSpace,
       }),
     ]);
+
+    return { dayMap, nightMap };
+  }
+
+  async load(textureLoader, textureQuality) {
+    const { dayMap, nightMap } = await this.loadSurfaceTextures(
+      textureLoader,
+      textureQuality
+    );
 
     const geometry = new THREE.SphereGeometry(EARTH_RADIUS, SEGMENTS, SEGMENTS);
     const material = new THREE.ShaderMaterial({
@@ -61,6 +78,30 @@ export class Earth {
     this.mesh.rotation.x = -AXIS_TILT;
 
     return this.mesh;
+  }
+
+  async reloadSurfaceTextures(textureLoader, textureQuality) {
+    if (!this.mesh?.material?.uniforms) {
+      return false;
+    }
+
+    const { dayMap, nightMap } = await this.loadSurfaceTextures(
+      textureLoader,
+      textureQuality
+    );
+    const uniforms = this.mesh.material.uniforms;
+    const previousDayMap = uniforms.dayMap?.value ?? null;
+    const previousNightMap = uniforms.nightMap?.value ?? null;
+
+    uniforms.dayMap.value = dayMap;
+    uniforms.nightMap.value = nightMap;
+    uniforms.dayMapTexelSize.value.set(1 / dayMap.image.width, 1 / dayMap.image.height);
+    uniforms.nightMapTexelSize.value.set(1 / nightMap.image.width, 1 / nightMap.image.height);
+
+    previousDayMap?.dispose?.();
+    previousNightMap?.dispose?.();
+
+    return true;
   }
 
   updateRotation(rotationAngle) {

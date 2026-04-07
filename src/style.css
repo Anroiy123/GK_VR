@@ -116,11 +116,17 @@ body {
 #speed-control,
 #sunlight-control,
 #earth-view-control,
+#texture-quality-control,
 #climate-controls {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
+}
+
+#climate-controls[hidden],
+#season-event-controls[hidden] {
+  display: none;
 }
 
 .slider-row,
@@ -165,11 +171,16 @@ body {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.segmented-control--6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .segmented-control--2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .earth-view-btn,
+.texture-quality-btn,
 .season-event-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -188,6 +199,7 @@ body {
 }
 
 .earth-view-btn:hover,
+.texture-quality-btn:hover,
 .season-event-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(100, 180, 255, 0.35);
@@ -195,6 +207,8 @@ body {
 
 .earth-view-btn.active,
 .earth-view-btn[aria-pressed="true"],
+.texture-quality-btn.active,
+.texture-quality-btn[aria-pressed="true"],
 .season-event-btn.active,
 .season-event-btn[aria-pressed="true"] {
   background: linear-gradient(
@@ -239,6 +253,7 @@ body {
 #iss-toggle,
 #mute-btn,
 #markers-toggle,
+#countries-toggle,
 #clouds-toggle,
 #atmosphere-toggle {
   background: rgba(255, 255, 255, 0.1);
@@ -263,14 +278,11 @@ body {
   gap: 8px;
 }
 
-#atmosphere-toggle {
-  grid-column: 1 / -1;
-}
-
 #controls-toggle:hover,
 #iss-toggle:hover,
 #mute-btn:hover,
 #markers-toggle:hover,
+#countries-toggle:hover,
 #clouds-toggle:hover,
 #atmosphere-toggle:hover {
   background: rgba(255, 255, 255, 0.2);
@@ -679,10 +691,6 @@ body {
 
   .action-grid {
     grid-template-columns: 1fr;
-  }
-
-  #atmosphere-toggle {
-    grid-column: auto;
   }
 }
 

@@ -17,7 +17,9 @@ import { Atmosphere } from "./Atmosphere.js";
 import { MapOverlay } from "./MapOverlay.js";
 import { ClimateExplorer } from "./ClimateExplorer.js";
 import { SeasonSystem } from "./SeasonSystem.js";
+import { CountryOverlay } from "./CountryOverlay.js";
 import { DEFAULT_SUN_PRESET, getSunPreset } from "./SunPresets.js";
+import { normalizeEarthTextureQualityPreset } from "./AdaptiveTexture.js";
 
 const EARTH_RADIUS = 2;
 const DEFAULT_EARTH_VIEW_MODE = "globe";
@@ -62,6 +64,9 @@ export class SceneManager {
     this.handleFirstUserAudioGesture = null;
     this.audioManager = null;
     this.seasonInitError = null;
+    this.textureLoader = null;
+    this.textureQualityPreset = "auto";
+    this.isTextureQualityReloading = false;
 
     this.earthViewMode = DEFAULT_EARTH_VIEW_MODE;
     this.desktopEarthViewModeBeforeVR = DEFAULT_EARTH_VIEW_MODE;
@@ -74,11 +79,13 @@ export class SceneManager {
       atmosphereVisible: true,
       markersVisible: false,
     };
+    this.countryNamesVisible = false;
 
     this.earth = new Earth();
     this.clouds = new Clouds();
     this.atmosphere = new Atmosphere();
     this.mapOverlay = new MapOverlay(EARTH_RADIUS);
+    this.countryOverlay = new CountryOverlay(EARTH_RADIUS);
     this.climateExplorer = new ClimateExplorer(EARTH_RADIUS);
     this.seasonSystem = new SeasonSystem();
     this.starfield = new Starfield();
@@ -142,6 +149,17 @@ export class SceneManager {
       this.audioManager?.playUiPress(isVisible ? "success" : "back");
     };
 
+    this.ui.onCountriesToggle = () => {
+      if (this.isSeasonMode()) {
+        return;
+      }
+
+      this.countryNamesVisible = !this.countryNamesVisible;
+      this.applyCountryOverlayVisibility();
+      this.syncUiState();
+      this.audioManager?.playUiPress(this.countryNamesVisible ? "success" : "back");
+    };
+
     this.ui.onCloudsToggle = () => {
       if (this.earthViewMode !== DEFAULT_EARTH_VIEW_MODE) {
         return;
@@ -195,6 +213,10 @@ export class SceneManager {
       this.audioManager?.playUiPress("default");
     };
 
+    this.ui.onTextureQualityChange = async (presetId) => {
+      await this.applyTextureQualityPreset(presetId);
+    };
+
     this.ui.onControlsToggle = (isCollapsed) => {
       this.audioManager?.playPanelToggle(!isCollapsed);
     };
@@ -239,26 +261,22 @@ export class SceneManager {
   }
 
   async init() {
-    const textureLoader = new THREE.TextureLoader();
-    const textureQuality = {
-      maxAnisotropy: this.renderer.capabilities.getMaxAnisotropy(),
-      maxTextureSize: this.renderer.capabilities.maxTextureSize,
-      devicePixelRatio: window.devicePixelRatio,
-    };
+    this.textureLoader = new THREE.TextureLoader();
+    const textureQuality = this.getTextureQuality();
 
     this.setupLighting();
 
     const [earthMesh, cloudMesh, moonGroup, stars, sunGroup] =
       await Promise.all([
-        this.earth.load(textureLoader, textureQuality),
-        this.clouds.load(textureLoader, textureQuality.maxAnisotropy),
-        this.moon.load(textureLoader),
-        this.starfield.create(textureLoader, textureQuality),
-        this.sun.load(textureLoader, textureQuality),
+        this.earth.load(this.textureLoader, textureQuality),
+        this.clouds.load(this.textureLoader, textureQuality.maxAnisotropy),
+        this.moon.load(this.textureLoader),
+        this.starfield.create(this.textureLoader, textureQuality),
+        this.sun.load(this.textureLoader, textureQuality),
       ]);
 
     try {
-      await this.seasonSystem.init(textureLoader, textureQuality);
+      await this.seasonSystem.init(this.textureLoader, textureQuality);
     } catch (error) {
       this.seasonInitError = error instanceof Error ? error.message : String(error);
     }
@@ -270,6 +288,7 @@ export class SceneManager {
     earthMesh.add(cloudMesh);
     earthMesh.add(atmosphereMesh);
     earthMesh.add(this.mapOverlay.group);
+    earthMesh.add(this.countryOverlay.group);
     earthMesh.add(this.climateExplorer.group);
     this.scene.add(sunGroup);
     this.scene.add(moonGroup);
@@ -290,7 +309,7 @@ export class SceneManager {
     this.climateExplorer.setMonth(this.explorerMonthIndex);
     this.seasonSystem.setMonth(this.explorerMonthIndex);
     this.climateInitPromise = this.climateExplorer
-      .init(textureLoader)
+      .init(this.textureLoader)
       .then(() => {
         this.ui.setMonthLabels(this.climateExplorer.metadata.months);
         this.climateExplorer.setMonth(this.explorerMonthIndex);
@@ -305,6 +324,14 @@ export class SceneManager {
         return null;
       });
 
+    this.countryInitPromise = this.countryOverlay
+      .init()
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn("Country overlay unavailable:", message);
+        return null;
+      });
+
     this.webxr.init();
     this.syncUiState();
     this.ui.setSunPreset(this.currentSunPreset.id);
@@ -315,12 +342,25 @@ export class SceneManager {
     return EARTH_VIEW_MODES.has(mode) ? mode : DEFAULT_EARTH_VIEW_MODE;
   }
 
+  getTextureQuality() {
+    return {
+      maxAnisotropy: this.renderer.capabilities.getMaxAnisotropy(),
+      maxTextureSize: this.renderer.capabilities.maxTextureSize,
+      devicePixelRatio: window.devicePixelRatio,
+      qualityPreset: this.textureQualityPreset,
+    };
+  }
+
   isClimateMode(mode = this.earthViewMode) {
     return mode === "temperature" || mode === "rainfall";
   }
 
   isSeasonMode(mode = this.earthViewMode) {
     return mode === "seasons";
+  }
+
+  isCountryOverlayAllowed(mode = this.earthViewMode) {
+    return mode !== "seasons";
   }
 
   setupAutoAudioStart() {
@@ -368,10 +408,48 @@ export class SceneManager {
     }
   }
 
+  async applyTextureQualityPreset(presetId) {
+    const nextPreset = normalizeEarthTextureQualityPreset(presetId);
+    if (nextPreset === this.textureQualityPreset || this.isTextureQualityReloading) {
+      return;
+    }
+
+    const previousPreset = this.textureQualityPreset;
+    this.textureQualityPreset = nextPreset;
+    this.isTextureQualityReloading = true;
+    this.ui.setTextureQuality(this.textureQualityPreset);
+    this.ui.setTextureQualityButtonsBusy(true);
+
+    try {
+      if (this.textureLoader && this.earth.mesh) {
+        await this.earth.reloadSurfaceTextures(
+          this.textureLoader,
+          this.getTextureQuality()
+        );
+      }
+      this.audioManager?.playUiPress("default");
+    } catch (error) {
+      this.textureQualityPreset = previousPreset;
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("Unable to apply Earth texture quality preset:", message);
+      this.audioManager?.playUiPress("back");
+    } finally {
+      this.isTextureQualityReloading = false;
+      this.ui.setTextureQualityButtonsBusy(false);
+      this.syncUiState();
+    }
+  }
+
   applyGlobeLayerState() {
     this.clouds.setVisible(this.globeLayerState.cloudsVisible);
     this.atmosphere.setVisible(this.globeLayerState.atmosphereVisible);
     this.markers.setVisible(this.globeLayerState.markersVisible);
+  }
+
+  applyCountryOverlayVisibility() {
+    const shouldShow =
+      this.countryNamesVisible && this.isCountryOverlayAllowed(this.earthViewMode);
+    this.countryOverlay.setVisible(shouldShow);
   }
 
   setStarfieldDimmed(isDimmed) {
@@ -428,6 +506,7 @@ export class SceneManager {
       this.clouds.setVisible(false);
       this.atmosphere.setVisible(false);
       this.mapOverlay.setVisible(false);
+      this.countryOverlay.setVisible(false);
       this.climateExplorer.setVisible(false);
       this.seasonSystem.setMonth(this.explorerMonthIndex);
       this.seasonSystem.setEvent(this.selectedSeasonEventKey);
@@ -509,6 +588,7 @@ export class SceneManager {
       this.climateExplorer.setVisible(true);
     }
 
+    this.applyCountryOverlayVisibility();
     this.syncUiState();
     return this.earthViewMode;
   }
@@ -587,7 +667,10 @@ export class SceneManager {
     this.ui.setMonthLabels(this.climateExplorer.metadata.months);
     this.ui.setClimateMonth(this.explorerMonthIndex);
     this.ui.setEarthViewMode(this.earthViewMode);
+    this.ui.setTextureQuality(this.textureQualityPreset);
+    this.ui.setTextureQualityButtonsBusy(this.isTextureQualityReloading);
     this.ui.setMarkersToggleText(this.markers.isVisible);
+    this.ui.setCountriesToggleText(this.countryNamesVisible);
     this.ui.setCloudsToggleText(this.clouds.isVisible);
     this.ui.setAtmosphereToggleText(this.atmosphere.isVisible);
     this.ui.setClimateLegend(this.climateExplorer.getCurrentVariableMeta());
@@ -604,6 +687,7 @@ export class SceneManager {
       cloudsLocked: this.earthViewMode !== DEFAULT_EARTH_VIEW_MODE,
       atmosphereLocked: this.earthViewMode !== DEFAULT_EARTH_VIEW_MODE,
       markersLocked: this.isClimateMode() || this.isSeasonMode(),
+      countriesLocked: this.isSeasonMode(),
     });
 
     if (this.isClimateMode()) {
@@ -724,6 +808,7 @@ export class SceneManager {
     this.clouds.update(delta, speed, activeCameraDistance);
     this.atmosphere.update(this.activeCameraWorldPosition, sunPos);
     this.mapOverlay.update(activeCamera);
+    this.countryOverlay.update(activeCamera);
     this.climateExplorer.update(activeCamera);
     this.seasonSystem.setSunlightMultiplier(this.ui.sunlightMultiplier);
     this.seasonSystem.update(delta, activeCamera);

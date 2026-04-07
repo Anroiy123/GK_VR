@@ -1,0 +1,592 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Canada",
+        "nameVi": "Canada",
+        "labelLat": 61.5,
+        "labelLon": -101.0,
+        "priority": 1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-141.0, 56.0],
+          [-141.0, 69.5],
+          [-123.0, 74.0],
+          [-95.0, 78.0],
+          [-68.0, 72.0],
+          [-54.0, 60.0],
+          [-63.0, 50.0],
+          [-95.0, 49.0],
+          [-123.0, 49.0],
+          [-141.0, 56.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "United States of America",
+        "nameVi": "Hoa Kỳ",
+        "labelLat": 38.5,
+        "labelLon": -97.0,
+        "priority": 1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-124.8, 48.8],
+          [-124.0, 41.0],
+          [-117.0, 32.0],
+          [-106.0, 31.0],
+          [-97.0, 26.0],
+          [-81.0, 25.0],
+          [-67.0, 44.0],
+          [-83.0, 47.0],
+          [-95.0, 49.0],
+          [-111.0, 49.0],
+          [-124.8, 48.8]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mexico",
+        "nameVi": "Mexico",
+        "labelLat": 23.6,
+        "labelLon": -102.5,
+        "priority": 7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.0, 32.5],
+          [-114.0, 28.0],
+          [-111.0, 24.0],
+          [-107.0, 22.0],
+          [-102.0, 18.0],
+          [-96.0, 16.0],
+          [-90.0, 18.0],
+          [-86.0, 21.5],
+          [-89.0, 23.0],
+          [-97.0, 26.0],
+          [-106.0, 31.0],
+          [-117.0, 32.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Brazil",
+        "nameVi": "Brasil",
+        "labelLat": -10.0,
+        "labelLon": -53.0,
+        "priority": 2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-74.0, -7.0],
+          [-70.0, -18.0],
+          [-64.0, -33.0],
+          [-52.0, -34.0],
+          [-38.0, -28.0],
+          [-34.0, -14.0],
+          [-35.0, 3.0],
+          [-51.0, 5.0],
+          [-60.0, 2.0],
+          [-69.0, -1.0],
+          [-74.0, -7.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "United Kingdom",
+        "nameVi": "Vương quốc Anh",
+        "labelLat": 54.2,
+        "labelLon": -2.8,
+        "priority": 4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-8.6, 50.0],
+          [-6.0, 58.5],
+          [-2.0, 59.0],
+          [1.8, 52.8],
+          [-1.8, 50.1],
+          [-5.8, 50.0],
+          [-8.6, 50.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "France",
+        "nameVi": "Pháp",
+        "labelLat": 46.4,
+        "labelLon": 2.2,
+        "priority": 4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-4.8, 48.8],
+          [-1.5, 43.2],
+          [3.0, 42.4],
+          [7.6, 43.5],
+          [8.2, 48.7],
+          [2.7, 51.0],
+          [-1.8, 50.4],
+          [-4.8, 48.8]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Egypt",
+        "nameVi": "Ai Cập",
+        "labelLat": 26.5,
+        "labelLon": 29.8,
+        "priority": 8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [24.7, 31.8],
+          [34.8, 31.8],
+          [35.7, 22.0],
+          [32.5, 22.0],
+          [25.0, 22.0],
+          [24.7, 31.8]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Saudi Arabia",
+        "nameVi": "Ả Rập Xê Út",
+        "labelLat": 23.9,
+        "labelLon": 44.8,
+        "priority": 8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [34.5, 29.5],
+          [39.0, 31.0],
+          [49.0, 30.5],
+          [55.0, 24.5],
+          [52.0, 16.0],
+          [43.0, 16.0],
+          [36.0, 22.0],
+          [34.5, 29.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "India",
+        "nameVi": "Ấn Độ",
+        "labelLat": 22.5,
+        "labelLon": 79.0,
+        "priority": 2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [68.0, 23.5],
+          [71.0, 30.5],
+          [77.0, 35.0],
+          [88.0, 28.5],
+          [92.0, 24.0],
+          [88.0, 21.0],
+          [80.0, 8.0],
+          [73.0, 8.5],
+          [68.0, 23.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "China",
+        "nameVi": "Trung Quốc",
+        "labelLat": 35.8,
+        "labelLon": 104.0,
+        "priority": 1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [74.0, 39.0],
+          [80.0, 47.0],
+          [96.0, 49.0],
+          [118.0, 51.0],
+          [134.0, 48.0],
+          [123.0, 36.0],
+          [121.0, 25.0],
+          [109.0, 19.0],
+          [98.0, 24.0],
+          [88.0, 28.0],
+          [74.0, 39.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Vietnam",
+        "nameVi": "Việt Nam",
+        "labelLat": 16.3,
+        "labelLon": 107.8,
+        "priority": 5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [102.0, 22.8],
+          [106.0, 23.4],
+          [109.6, 21.8],
+          [109.0, 16.0],
+          [108.6, 11.0],
+          [106.4, 8.7],
+          [104.0, 9.4],
+          [103.0, 12.2],
+          [104.0, 17.5],
+          [102.0, 22.8]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Japan",
+        "nameVi": "Nhật Bản",
+        "labelLat": 37.0,
+        "labelLon": 138.5,
+        "priority": 4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [129.0, 31.0],
+          [131.0, 34.0],
+          [135.0, 35.5],
+          [140.0, 38.0],
+          [145.5, 43.8],
+          [142.0, 45.5],
+          [138.0, 42.0],
+          [134.0, 37.5],
+          [130.0, 33.0],
+          [129.0, 31.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Indonesia",
+        "nameVi": "Indonesia",
+        "labelLat": -2.0,
+        "labelLon": 118.0,
+        "priority": 5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [95.0, 5.5],
+          [106.0, 6.5],
+          [119.0, 4.5],
+          [128.0, 2.0],
+          [141.0, -3.0],
+          [133.0, -8.5],
+          [122.0, -10.5],
+          [111.0, -8.5],
+          [103.0, -6.5],
+          [95.0, 5.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Australia",
+        "nameVi": "Úc",
+        "labelLat": -25.0,
+        "labelLon": 133.5,
+        "priority": 2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [113.0, -22.0],
+          [114.0, -35.0],
+          [124.0, -39.0],
+          [138.0, -38.5],
+          [150.0, -35.0],
+          [153.5, -27.0],
+          [146.0, -11.0],
+          [130.0, -10.0],
+          [118.0, -15.0],
+          [113.0, -22.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Russia",
+        "nameVi": "Nga",
+        "labelLat": 61.0,
+        "labelLon": 105.0,
+        "priority": 1
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [28.0, 56.0],
+          [40.0, 68.0],
+          [76.0, 74.0],
+          [120.0, 75.0],
+          [165.0, 72.0],
+          [174.0, 65.0],
+          [154.0, 56.0],
+          [106.0, 50.0],
+          [66.0, 49.0],
+          [40.0, 51.0],
+          [28.0, 56.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Germany",
+        "nameVi": "Đức",
+        "labelLat": 51.1,
+        "labelLon": 10.2,
+        "priority": 4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [5.8, 47.0],
+          [8.2, 47.5],
+          [13.8, 48.0],
+          [15.0, 53.5],
+          [10.0, 55.0],
+          [6.0, 54.8],
+          [5.8, 47.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Italy",
+        "nameVi": "Ý",
+        "labelLat": 42.8,
+        "labelLon": 12.8,
+        "priority": 5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [7.0, 45.0],
+          [12.5, 46.0],
+          [18.4, 40.5],
+          [16.8, 37.0],
+          [12.0, 37.0],
+          [9.0, 40.0],
+          [7.0, 45.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Spain",
+        "nameVi": "Tây Ban Nha",
+        "labelLat": 40.2,
+        "labelLon": -3.7,
+        "priority": 5
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-9.5, 43.5],
+          [-8.0, 37.0],
+          [3.5, 36.0],
+          [3.5, 43.0],
+          [-1.0, 44.0],
+          [-9.5, 43.5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Turkey",
+        "nameVi": "Thổ Nhĩ Kỳ",
+        "labelLat": 39.0,
+        "labelLon": 35.0,
+        "priority": 6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [26.0, 41.8],
+          [30.0, 42.0],
+          [42.0, 41.0],
+          [44.0, 37.0],
+          [35.0, 36.0],
+          [27.0, 37.0],
+          [26.0, 41.8]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "South Korea",
+        "nameVi": "Hàn Quốc",
+        "labelLat": 36.4,
+        "labelLon": 127.9,
+        "priority": 6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [126.0, 38.6],
+          [129.5, 38.5],
+          [129.4, 34.2],
+          [126.0, 34.0],
+          [126.0, 38.6]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Thailand",
+        "nameVi": "Thái Lan",
+        "labelLat": 15.2,
+        "labelLon": 101.0,
+        "priority": 7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [97.3, 20.4],
+          [100.5, 20.5],
+          [105.5, 18.0],
+          [104.5, 10.0],
+          [99.0, 6.2],
+          [97.3, 12.0],
+          [97.3, 20.4]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Argentina",
+        "nameVi": "Argentina",
+        "labelLat": -34.0,
+        "labelLon": -64.0,
+        "priority": 4
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-73.0, -22.0],
+          [-69.0, -38.0],
+          [-66.0, -46.0],
+          [-63.0, -55.0],
+          [-55.0, -51.0],
+          [-53.0, -34.0],
+          [-58.0, -25.0],
+          [-65.0, -22.0],
+          [-73.0, -22.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Nigeria",
+        "nameVi": "Nigeria",
+        "labelLat": 9.2,
+        "labelLon": 8.7,
+        "priority": 6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [2.7, 13.9],
+          [4.5, 14.0],
+          [14.5, 13.1],
+          [14.7, 4.5],
+          [6.0, 4.3],
+          [2.7, 6.4],
+          [2.7, 13.9]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "United Arab Emirates",
+        "nameVi": "Các Tiểu vương quốc Ả Rập Thống nhất",
+        "labelLat": 24.2,
+        "labelLon": 54.3,
+        "priority": 7
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [51.4, 26.0],
+          [56.6, 25.8],
+          [56.5, 22.6],
+          [52.6, 22.5],
+          [51.4, 26.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "South Africa",
+        "nameVi": "Nam Phi",
+        "labelLat": -29.0,
+        "labelLon": 24.0,
+        "priority": 6
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [16.5, -28.0],
+          [19.0, -34.8],
+          [27.0, -34.8],
+          [32.8, -29.0],
+          [31.0, -22.0],
+          [24.0, -22.0],
+          [18.0, -24.0],
+          [16.5, -28.0]
+        ]]
+      }
+    }
+  ]
+}
