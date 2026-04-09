@@ -18,7 +18,7 @@ const vertexShader = `
 
 const fragmentShader = `
   uniform vec3 sunPosition;
-  uniform vec3 viewPosition;
+  
   uniform float hazeStrength;
   uniform float dayEdge;
   uniform float sunHaloIntensity;

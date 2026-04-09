@@ -460,7 +460,7 @@ const glowShellVertexShader = `
 `;
 
 const glowShellFragmentShader = `
-  uniform vec3 viewPosition;
+  
   uniform vec3 coreColor;
   uniform vec3 rimColor;
   uniform float opacity;
@@ -474,14 +474,14 @@ const glowShellFragmentShader = `
 
   void main() {
     vec3 normal = normalize(vWorldNormal);
-    vec3 viewDir = normalize(viewPosition - vWorldPosition);
+    vec3 viewDir = normalize(cameraPosition - vWorldPosition);
     float viewDot = max(dot(normal, viewDir), 0.0);
     float core = pow(viewDot, radialPower);
     float rim = pow(1.0 - viewDot, rimPower);
     float alpha = clamp((core * coreStrength + rim * rimStrength) * opacity, 0.0, 1.0);
     vec3 color = mix(coreColor, rimColor, clamp(rim, 0.0, 1.0));
 
-    gl_FragColor = vec4(color * alpha, alpha);
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
@@ -533,7 +533,7 @@ function setShellScale(mesh, scale) {
 
 function setShellViewPosition(mesh, position) {
   if (!mesh || !position) return;
-  mesh.material.uniforms.viewPosition.value.copy(position);
+  
 }
 
 function setShellOpacity(mesh, opacity) {
