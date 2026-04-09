@@ -60,7 +60,7 @@ function createTextureCanvas(width, height) {
   return canvas;
 }
 
-function drawResizedImage(image, width, height) {
+function drawResizedImage(image, width, height, flipY = false) {
   const canvas = createTextureCanvas(width, height);
   const context = canvas.getContext("2d", { alpha: true });
 
@@ -73,6 +73,12 @@ function drawResizedImage(image, width, height) {
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.clearRect(0, 0, width, height);
+  
+  if (flipY) {
+    context.translate(0, height);
+    context.scale(1, -1);
+  }
+  
   context.drawImage(image, 0, 0, width, height);
 
   return canvas;
@@ -128,6 +134,7 @@ async function createResizedTexture(baseTexture, width, height) {
         resizeWidth: width,
         resizeHeight: height,
         resizeQuality: "high",
+        imageOrientation: baseTexture.flipY ? "flipY" : "none",
       });
       const resizedTexture = createTextureFromImage(baseTexture, imageBitmap);
       resizedTexture.userData.imageBitmap = imageBitmap;
@@ -137,7 +144,7 @@ async function createResizedTexture(baseTexture, width, height) {
     }
   }
 
-  const resizedCanvas = drawResizedImage(baseTexture.image, width, height);
+  const resizedCanvas = drawResizedImage(baseTexture.image, width, height, baseTexture.flipY);
   return copyTextureTransform(new THREE.CanvasTexture(resizedCanvas), baseTexture);
 }
 
