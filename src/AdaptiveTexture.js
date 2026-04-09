@@ -73,12 +73,12 @@ function drawResizedImage(image, width, height, flipY = false) {
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.clearRect(0, 0, width, height);
-  
+
   if (flipY) {
     context.translate(0, height);
     context.scale(1, -1);
   }
-  
+
   context.drawImage(image, 0, 0, width, height);
 
   return canvas;
@@ -144,8 +144,16 @@ async function createResizedTexture(baseTexture, width, height) {
     }
   }
 
-  const resizedCanvas = drawResizedImage(baseTexture.image, width, height, baseTexture.flipY);
-  return copyTextureTransform(new THREE.CanvasTexture(resizedCanvas), baseTexture);
+  const resizedCanvas = drawResizedImage(
+    baseTexture.image,
+    width,
+    height,
+    baseTexture.flipY,
+  );
+  return copyTextureTransform(
+    new THREE.CanvasTexture(resizedCanvas),
+    baseTexture,
+  );
 }
 
 export function getEarthTextureDimensions(
