@@ -103,33 +103,89 @@ function configureTexture(texture, maxAnisotropy, colorSpace = null) {
   return texture;
 }
 
-function createResizedTexture(baseTexture, width, height) {
+function copyTextureTransform(targetTexture, sourceTexture) {
+  targetTexture.name = sourceTexture.name;
+  targetTexture.mapping = sourceTexture.mapping;
+  targetTexture.wrapS = sourceTexture.wrapS;
+  targetTexture.wrapT = sourceTexture.wrapT;
+  targetTexture.flipY = sourceTexture.flipY;
+  targetTexture.rotation = sourceTexture.rotation;
+  targetTexture.offset.copy(sourceTexture.offset);
+  targetTexture.repeat.copy(sourceTexture.repeat);
+  targetTexture.center.copy(sourceTexture.center);
+
+  return targetTexture;
+}
+
+function createTextureFromImage(baseTexture, image) {
+  return copyTextureTransform(new THREE.Texture(image), baseTexture);
+}
+
+async function createResizedTexture(baseTexture, width, height) {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const imageBitmap = await createImageBitmap(baseTexture.image, {
+        resizeWidth: width,
+        resizeHeight: height,
+        resizeQuality: "high",
+      });
+      const resizedTexture = createTextureFromImage(baseTexture, imageBitmap);
+      resizedTexture.userData.imageBitmap = imageBitmap;
+      return resizedTexture;
+    } catch (_error) {
+      // Fall back to canvas resizing when ImageBitmap resize is unavailable.
+    }
+  }
+
   const resizedCanvas = drawResizedImage(baseTexture.image, width, height);
-  const resizedTexture = new THREE.CanvasTexture(resizedCanvas);
-
-  resizedTexture.name = baseTexture.name;
-  resizedTexture.wrapS = baseTexture.wrapS;
-  resizedTexture.wrapT = baseTexture.wrapT;
-  resizedTexture.flipY = baseTexture.flipY;
-
-  return resizedTexture;
+  return copyTextureTransform(new THREE.CanvasTexture(resizedCanvas), baseTexture);
 }
 
 export function getEarthTextureDimensions(
   maxTextureSize,
   devicePixelRatio = 1,
   qualityPreset = "auto",
+  sourceWidth = Number.POSITIVE_INFINITY,
+  sourceHeight = null,
 ) {
   const preferredWidth = resolvePreferredWidthByPreset(
     qualityPreset,
     devicePixelRatio,
   );
+  const safeSourceWidth =
+    Number.isFinite(sourceWidth) && sourceWidth > 0
+      ? sourceWidth
+      : Number.POSITIVE_INFINITY;
+
+  if (
+    Number.isFinite(safeSourceWidth) &&
+    safeSourceWidth < preferredWidth &&
+    safeSourceWidth <= maxTextureSize
+  ) {
+    return {
+      width: safeSourceWidth,
+      height:
+        Number.isFinite(sourceHeight) && sourceHeight > 0
+          ? sourceHeight
+          : safeSourceWidth / 2,
+    };
+  }
+
   const width = resolvePreferredWidth(maxTextureSize, preferredWidth);
 
   return {
     width,
     height: width / 2,
   };
+}
+
+export function disposeTexture(texture) {
+  if (!texture) {
+    return;
+  }
+
+  texture.dispose();
+  texture.userData?.imageBitmap?.close?.();
 }
 
 export async function loadAdaptiveEquirectangularTexture(
@@ -164,16 +220,18 @@ export async function loadAdaptiveEquirectangularTexture(
     maxTextureSize,
     devicePixelRatio,
     qualityPreset,
+    baseTexture.image?.width,
+    baseTexture.image?.height,
   );
   const needsResize =
     baseTexture.image?.width !== width || baseTexture.image?.height !== height;
 
   const texture = needsResize
-    ? createResizedTexture(baseTexture, width, height)
+    ? await createResizedTexture(baseTexture, width, height)
     : baseTexture;
 
   if (needsResize) {
-    baseTexture.dispose();
+    disposeTexture(baseTexture);
   }
 
   return configureTexture(texture, maxAnisotropy, colorSpace);

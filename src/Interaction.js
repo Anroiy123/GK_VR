@@ -15,6 +15,7 @@ export class Interaction {
     this.isVR = false;
     this.desktopMode = "markers";
     this.onClimatePointer = null;
+    this.onCoordinatePointer = null;
     this.vrControllers = [];
     this.vrControllerGrips = [];
     this.selectedMarker = null;
@@ -76,15 +77,23 @@ export class Interaction {
   }
 
   setDesktopMode(mode) {
+    if (this.desktopMode === mode) {
+      return;
+    }
+
     this.desktopMode = mode;
 
-    if (mode !== "markers") {
+    if (mode !== "markers" && this.selectedMarker) {
       this.clearSelection();
     }
   }
 
   setClimatePointerHandler(handler) {
     this.onClimatePointer = handler;
+  }
+
+  setCoordinatePointerHandler(handler) {
+    this.onCoordinatePointer = handler;
   }
 
   setupVRInputDebugOverlay() {
@@ -452,7 +461,10 @@ export class Interaction {
       return;
     }
 
-    if (this.desktopMode === "climate") {
+    if (
+      this.desktopMode === "climate" ||
+      this.desktopMode === "coordinates"
+    ) {
       this.pendingClimatePointer = true;
       this.pendingClimateMoved = false;
       this.pendingClimateStartX = event.clientX;
@@ -494,7 +506,7 @@ export class Interaction {
     const shouldHandleClimateClick =
       !this.isVR &&
       event.button === 0 &&
-      this.desktopMode === "climate" &&
+      (this.desktopMode === "climate" || this.desktopMode === "coordinates") &&
       !this.pendingClimateMoved;
 
     this.pendingClimatePointer = false;
@@ -506,7 +518,14 @@ export class Interaction {
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    this.onClimatePointer?.(this.raycaster);
+    if (this.desktopMode === "climate") {
+      this.onClimatePointer?.(this.raycaster);
+      return;
+    }
+
+    if (this.desktopMode === "coordinates") {
+      this.onCoordinatePointer?.(this.raycaster);
+    }
   }
 
   onPointerCancel() {

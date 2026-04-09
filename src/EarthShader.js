@@ -6,12 +6,14 @@ export const EarthShader = {
     nightMap: { value: null },
     sunDirection: { value: new THREE.Vector3(1, 0, 0) },
     moonPosition: { value: new THREE.Vector3(-10, 0, 0) },
+    moonRadius: { value: 0.5 },
     dayMapTexelSize: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
     nightMapTexelSize: { value: new THREE.Vector2(1 / 2048, 1 / 1024) },
     cameraDistance: { value: 6 },
     surfaceDetailEnabled: { value: 1 },
     sunBrightness: { value: 1.0 },
     flatMapLighting: { value: 0 },
+    eclipseEnabled: { value: 0 },
   },
 
   vertexShader: `
@@ -36,12 +38,14 @@ export const EarthShader = {
     uniform sampler2D nightMap;
     uniform vec3 sunDirection;
     uniform vec3 moonPosition;
+    uniform float moonRadius;
     uniform vec2 dayMapTexelSize;
     uniform vec2 nightMapTexelSize;
     uniform float cameraDistance;
     uniform float surfaceDetailEnabled;
     uniform float sunBrightness;
     uniform float flatMapLighting;
+    uniform float eclipseEnabled;
 
     varying vec2 vUv;
     varying vec3 vNormal;
@@ -101,6 +105,27 @@ export const EarthShader = {
       return normalize(baseNormal + reliefOffset * strength);
     }
 
+    float computeSolarVisibility(vec3 worldPosition, vec3 lightDirection) {
+      if (eclipseEnabled < 0.5 || moonRadius <= 0.0) {
+        return 1.0;
+      }
+
+      vec3 rayDir = normalize(lightDirection);
+      vec3 toMoon = moonPosition - worldPosition;
+      float projection = dot(toMoon, rayDir);
+
+      if (projection <= 0.0) {
+        return 1.0;
+      }
+
+      vec3 closestPoint = worldPosition + rayDir * projection;
+      float distanceToShadowAxis = length(moonPosition - closestPoint);
+      float normalizedDistance = distanceToShadowAxis / max(moonRadius, 0.0001);
+      float umbra = 1.0 - smoothstep(0.82, 1.08, normalizedDistance);
+
+      return 1.0 - (umbra * 0.92);
+    }
+
     void main() {
       // Sample textures
       vec4 dayColor = texture2D(dayMap, vUv);
@@ -119,6 +144,8 @@ export const EarthShader = {
 
       // Calculate lighting intensity (dot product)
       float dotNL = dot(modifiedNormal, normalize(sunDirection));
+      float solarVisibility = computeSolarVisibility(vWorldPosition, sunDirection);
+      float eclipseShadow = 1.0 - solarVisibility;
 
       // Smoothstep to create a twilight zone (transition between day and night)
       float dayMix = smoothstep(-0.2, 0.2, dotNL);
@@ -128,9 +155,11 @@ export const EarthShader = {
 
       // Base lighting for the day side (ambient + diffuse)
       vec3 ambient = vec3(DAY_AMBIENT_STRENGTH * mix(0.85, 1.25, clamp(sunBrightness / 2.5, 0.0, 1.0)));
-      vec3 diffuse = daySurfaceColor * max(dotNL, 0.0) * DAY_DIFFUSE_STRENGTH * sunBrightness;
+      ambient *= mix(1.0, 0.38, eclipseShadow);
+      vec3 diffuse = daySurfaceColor * max(dotNL, 0.0) * DAY_DIFFUSE_STRENGTH * sunBrightness * solarVisibility;
       
       vec3 finalDayColor = (diffuse + ambient * daySurfaceColor) * DAYLIGHT_BOOST;
+      finalDayColor = mix(finalDayColor, finalDayColor * 0.16, eclipseShadow);
 
       // Moonlight on the night side
       vec3 moonDir = normalize(moonPosition - vWorldPosition);

@@ -3,6 +3,7 @@ import {
   SUN_PRESET_OPTIONS,
   getSunPreset,
 } from "./SunPresets.js";
+import { CelestialCalculator } from "./CelestialCalculator.js";
 import {
   EARTH_TEXTURE_QUALITY_OPTIONS,
   normalizeEarthTextureQualityPreset,
@@ -22,6 +23,16 @@ const DEFAULT_MONTH_LABELS = [
   "Tháng 11",
   "Tháng 12",
 ];
+const SEASON_TIMELINE_MAX = 364.999;
+
+function formatCoordinateLabel(value, positiveDirection, negativeDirection) {
+  if (!Number.isFinite(value)) {
+    return "--";
+  }
+
+  const direction = value >= 0 ? positiveDirection : negativeDirection;
+  return `${Math.abs(value).toFixed(4)}° ${direction}`;
+}
 
 export class UI {
   constructor() {
@@ -46,12 +57,15 @@ export class UI {
     this.controlsPanel = document.getElementById("controls-panel");
     this.controlsToggleBtn = document.getElementById("controls-toggle");
     this.loadingScreen = document.getElementById("loading-screen");
+    this.loadingSpinner = this.loadingScreen?.querySelector(".loader") ?? null;
+    this.loadingMessage = this.loadingScreen?.querySelector("p") ?? null;
     this.issToggleBtn = document.getElementById("iss-toggle");
     this.muteBtn = document.getElementById("mute-btn");
     this.markersToggleBtn = document.getElementById("markers-toggle");
     this.countriesToggleBtn = document.getElementById("countries-toggle");
     this.cloudsToggleBtn = document.getElementById("clouds-toggle");
     this.atmosphereToggleBtn = document.getElementById("atmosphere-toggle");
+    this.actionGrid = document.querySelector(".action-grid");
     this.climateControls = document.getElementById("climate-controls");
     this.explorerMonthTitle = document.getElementById("explorer-month-title");
     this.climateMonthSlider = document.getElementById("climate-month-slider");
@@ -61,10 +75,6 @@ export class UI {
     this.climateLegendBar = document.getElementById("climate-legend-bar");
     this.climateLegendMin = document.getElementById("climate-legend-min");
     this.climateLegendMax = document.getElementById("climate-legend-max");
-    this.seasonEventControls = document.getElementById("season-event-controls");
-    this.seasonEventButtons = Array.from(
-      document.querySelectorAll("[data-season-event]"),
-    );
     this.climatePanel = document.getElementById("climate-panel");
     this.climatePanelKicker = document.getElementById("climate-panel-kicker");
     this.climatePanelTitle = document.getElementById("climate-panel-title");
@@ -83,6 +93,24 @@ export class UI {
     );
     this.climateInsightSummary = document.getElementById(
       "climate-panel-insight-summary",
+    );
+    this.coordinatePanel = document.getElementById("coordinate-panel");
+    this.coordinatePanelKicker = document.getElementById(
+      "coordinate-panel-kicker",
+    );
+    this.coordinatePanelTitle = document.getElementById(
+      "coordinate-panel-title",
+    );
+    this.coordinatePanelStatus = document.getElementById(
+      "coordinate-panel-status",
+    );
+    this.coordinatePanelSample = document.getElementById(
+      "coordinate-panel-sample",
+    );
+    this.coordinateProbeLat = document.getElementById("coordinate-probe-lat");
+    this.coordinateProbeLon = document.getElementById("coordinate-probe-lon");
+    this.coordinateProbeSummary = document.getElementById(
+      "coordinate-probe-summary",
     );
     this.seasonPanel = document.getElementById("season-panel");
     this.seasonPanelKicker = document.getElementById("season-panel-kicker");
@@ -116,7 +144,8 @@ export class UI {
     this.onAtmosphereToggle = null;
     this.onEarthViewModeChange = null;
     this.onClimateMonthChange = null;
-    this.onSeasonEventSelect = null;
+    this.onSeasonTimelineChange = null;
+    this.onExplorerSliderScrubChange = null;
     this.onSunPresetChange = null;
     this.onTextureQualityChange = null;
     this.onControlsToggle = null;
@@ -135,6 +164,7 @@ export class UI {
     this.lastFpsUpdate = 0;
     this.activePopupName = null;
     this.monthLabels = [...DEFAULT_MONTH_LABELS];
+    this.explorerSliderMode = "climate";
 
     this.speedSlider?.addEventListener("input", () => {
       this.speedMultiplier = parseFloat(this.speedSlider.value);
@@ -158,10 +188,45 @@ export class UI {
       this.onAudioVolumeChange?.(this.audioVolume);
     });
 
+    const handleSeasonScrubChange = (isScrubbing) => {
+      if (this.explorerSliderMode !== "season") {
+        return;
+      }
+
+      this.onExplorerSliderScrubChange?.(isScrubbing);
+    };
+
     this.climateMonthSlider?.addEventListener("input", () => {
+      const rawValue = parseFloat(this.climateMonthSlider.value);
+
+      if (this.explorerSliderMode === "season") {
+        const nextTimelineDay = Number.isFinite(rawValue) ? rawValue : 0;
+        this.setSeasonTimeline(nextTimelineDay);
+        this.onSeasonTimelineChange?.(nextTimelineDay);
+        return;
+      }
+
       const nextMonthIndex = parseInt(this.climateMonthSlider.value, 10) || 0;
       this.setClimateMonth(nextMonthIndex);
       this.onClimateMonthChange?.(nextMonthIndex);
+    });
+    this.climateMonthSlider?.addEventListener("pointerdown", () => {
+      handleSeasonScrubChange(true);
+    });
+    this.climateMonthSlider?.addEventListener("pointerup", () => {
+      handleSeasonScrubChange(false);
+    });
+    this.climateMonthSlider?.addEventListener("pointercancel", () => {
+      handleSeasonScrubChange(false);
+    });
+    this.climateMonthSlider?.addEventListener("change", () => {
+      handleSeasonScrubChange(false);
+    });
+    window.addEventListener("pointerup", () => {
+      handleSeasonScrubChange(false);
+    });
+    window.addEventListener("pointercancel", () => {
+      handleSeasonScrubChange(false);
     });
 
     this.sunPresetButtons.forEach((button) => {
@@ -203,18 +268,6 @@ export class UI {
       });
     });
 
-    this.seasonEventButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const eventKey = button.dataset.seasonEvent;
-        if (!eventKey) {
-          return;
-        }
-
-        this.setSeasonEventActive(eventKey);
-        this.onSeasonEventSelect?.(eventKey);
-      });
-    });
-
     this.issToggleBtn?.addEventListener("click", () => {
       this.onISSToggle?.();
     });
@@ -251,22 +304,40 @@ export class UI {
     this.setExplorerControlsVisible(false);
     this.setExplorerMonthTitle("Tháng dữ liệu");
     this.setClimateLegendVisible(true);
-    this.setSeasonEventControlsVisible(false);
     this.setEarthViewMode(this.earthViewMode);
     this.setTextureQuality(this.textureQuality);
     this.setControlLocks({});
+    this.setActionButtonVisibility({});
     this.setSunPreset(this.sunPreset);
     this.setAudioVolume(this.audioVolume);
     this.hideSeasonPanel();
   }
 
   hideLoading() {
+    this.loadingScreen?.classList.remove("error");
+    this.loadingSpinner?.classList.remove("error");
     this.loadingScreen?.classList.add("hidden");
     setTimeout(() => {
       if (this.loadingScreen) {
         this.loadingScreen.style.display = "none";
       }
     }, 800);
+  }
+
+  showLoadingError(message = "Không thể khởi tạo mô phỏng.") {
+    if (this.loadingScreen) {
+      this.loadingScreen.style.display = "flex";
+      this.loadingScreen.classList.remove("hidden");
+      this.loadingScreen.classList.add("error");
+    }
+
+    if (this.loadingSpinner) {
+      this.loadingSpinner.classList.add("error");
+    }
+
+    if (this.loadingMessage) {
+      this.loadingMessage.textContent = message;
+    }
   }
 
   updateFPS(timestamp) {
@@ -299,6 +370,10 @@ export class UI {
   setMonthLabels(labels) {
     if (Array.isArray(labels) && labels.length === 12) {
       this.monthLabels = [...labels];
+    }
+
+    if (this.explorerSliderMode !== "climate") {
+      return;
     }
 
     const sliderValue =
@@ -436,17 +511,62 @@ export class UI {
     }
   }
 
-  setClimateMonth(monthIndex) {
-    const safeMonthIndex = Math.min(11, Math.max(0, monthIndex));
+  setExplorerSliderConfig({
+    mode = "climate",
+    min = "0",
+    max = "11",
+    step = "1",
+    value = "0",
+    label = "",
+  } = {}) {
+    this.explorerSliderMode = mode;
 
     if (this.climateMonthSlider) {
-      this.climateMonthSlider.value = String(safeMonthIndex);
+      this.climateMonthSlider.min = min;
+      this.climateMonthSlider.max = max;
+      this.climateMonthSlider.step = step;
+      this.climateMonthSlider.value = value;
     }
 
-    if (this.climateMonthLabel) {
-      this.climateMonthLabel.textContent =
-        this.monthLabels[safeMonthIndex] ?? `Tháng ${safeMonthIndex + 1}`;
+    if (this.climateMonthLabel && label) {
+      this.climateMonthLabel.textContent = label;
     }
+  }
+
+  setClimateMonth(monthIndex) {
+    const safeMonthIndex = Math.min(11, Math.max(0, monthIndex));
+    this.setExplorerSliderConfig({
+      mode: "climate",
+      min: "0",
+      max: "11",
+      step: "1",
+      value: String(safeMonthIndex),
+      label: this.monthLabels[safeMonthIndex] ?? `Tháng ${safeMonthIndex + 1}`,
+    });
+  }
+
+  setSeasonTimeline(timelineDay, dateLabel = null) {
+    const safeTimelineDay = Math.min(
+      SEASON_TIMELINE_MAX,
+      Math.max(
+        0,
+        Number.isFinite(timelineDay) ? timelineDay : 0,
+      ),
+    );
+    const resolvedDateLabel =
+      dateLabel ??
+      CelestialCalculator.formatDateLabel(
+        CelestialCalculator.getDateFromTimelineDay(safeTimelineDay),
+      );
+
+    this.setExplorerSliderConfig({
+      mode: "season",
+      min: "0",
+      max: String(SEASON_TIMELINE_MAX),
+      step: "any",
+      value: safeTimelineDay.toFixed(3),
+      label: resolvedDateLabel,
+    });
   }
 
   setClimateLegend(variableMeta) {
@@ -480,23 +600,45 @@ export class UI {
     }
   }
 
-  setSeasonEventControlsVisible(isVisible) {
-    if (this.seasonEventControls) {
-      this.seasonEventControls.hidden = !isVisible;
-    }
-  }
-
   setSeasonEventActive(eventKey) {
-    this.seasonEventButtons.forEach((button) => {
-      const isActive = button.dataset.seasonEvent === eventKey;
-      button.setAttribute("aria-pressed", String(isActive));
-      button.classList.toggle("active", isActive);
-    });
-
     this.seasonOrbitEvents.forEach((node) => {
       const isActive = node.dataset.seasonOrbitEvent === eventKey;
       node.classList.toggle("is-active", isActive);
     });
+  }
+
+  setActionButtonVisibility({
+    issVisible = true,
+    muteVisible = true,
+    markersVisible = true,
+    countriesVisible = true,
+    cloudsVisible = true,
+    atmosphereVisible = true,
+  } = {}) {
+    const visibilityMap = [
+      { button: this.issToggleBtn, visible: issVisible },
+      { button: this.muteBtn, visible: muteVisible },
+      { button: this.markersToggleBtn, visible: markersVisible },
+      { button: this.countriesToggleBtn, visible: countriesVisible },
+      { button: this.cloudsToggleBtn, visible: cloudsVisible },
+      { button: this.atmosphereToggleBtn, visible: atmosphereVisible },
+    ];
+
+    let visibleCount = 0;
+    visibilityMap.forEach(({ button, visible }) => {
+      if (!button) {
+        return;
+      }
+
+      button.hidden = !visible;
+      if (visible) {
+        visibleCount += 1;
+      }
+    });
+
+    if (this.actionGrid) {
+      this.actionGrid.classList.toggle("action-grid--single", visibleCount <= 1);
+    }
   }
 
   setControlLocks({
@@ -600,6 +742,68 @@ export class UI {
     this.climateInsight.hidden = true;
   }
 
+  showCoordinateStatus(title, message, kicker = "Mode tọa độ") {
+    if (
+      !this.coordinatePanel ||
+      !this.coordinatePanelTitle ||
+      !this.coordinatePanelStatus ||
+      !this.coordinatePanelKicker ||
+      !this.coordinatePanelSample
+    ) {
+      return;
+    }
+
+    this.coordinatePanel.hidden = false;
+    this.coordinatePanelKicker.textContent = kicker;
+    this.coordinatePanelTitle.textContent = title;
+    this.coordinatePanelStatus.textContent = message;
+    this.coordinatePanelSample.hidden = true;
+  }
+
+  showCoordinateProbe(selection) {
+    if (
+      !selection ||
+      !this.coordinatePanel ||
+      !this.coordinatePanelTitle ||
+      !this.coordinatePanelStatus ||
+      !this.coordinatePanelSample ||
+      !this.coordinatePanelKicker ||
+      !this.coordinateProbeLat ||
+      !this.coordinateProbeLon ||
+      !this.coordinateProbeSummary
+    ) {
+      return;
+    }
+
+    this.coordinatePanel.hidden = false;
+    this.coordinatePanelKicker.textContent = "Mode tọa độ";
+    this.coordinatePanelTitle.textContent = "Điểm đã chọn";
+    this.coordinatePanelStatus.textContent =
+      "Tọa độ của vị trí bạn vừa chọn trên bề mặt Trái Đất.";
+    this.coordinateProbeLat.textContent = formatCoordinateLabel(
+      selection.lat,
+      "Bắc",
+      "Nam",
+    );
+    this.coordinateProbeLon.textContent = formatCoordinateLabel(
+      selection.lon,
+      "Đông",
+      "Tây",
+    );
+    this.coordinateProbeSummary.textContent =
+      "Bấm vào điểm khác trên quả địa cầu để cập nhật tọa độ mới.";
+    this.coordinatePanelSample.hidden = false;
+  }
+
+  hideCoordinatePanel() {
+    if (!this.coordinatePanel || !this.coordinatePanelSample) {
+      return;
+    }
+
+    this.coordinatePanel.hidden = true;
+    this.coordinatePanelSample.hidden = true;
+  }
+
   showSeasonPanel(seasonState) {
     if (
       !seasonState ||
@@ -620,16 +824,12 @@ export class UI {
     this.seasonPanelKicker.textContent = "Khám phá mùa";
     this.seasonPanelTitle.textContent =
       seasonState.stateLabel ?? seasonState.eventLabel;
-    this.seasonPanelStatus.textContent = `${seasonState.monthLabel} | Quan sát trực tiếp Trái Đất nghiêng quanh Mặt Trời trong scene 3D.`;
-    this.seasonPanelDate.textContent = seasonState.eventDateLabel;
+    this.seasonPanelStatus.textContent = `${seasonState.dateLabel} | Theo dõi quỹ đạo Sun-Earth-Moon và vùng ánh sáng Mặt Trời bị Mặt Trăng che khuất trên Trái Đất.`;
+    this.seasonPanelDate.textContent = seasonState.dateLabel;
     this.seasonPanelSubsolar.textContent = seasonState.subsolarLatitudeLabel;
     this.seasonPanelTilt.textContent = `${seasonState.axialTiltDeg.toFixed(2)}°`;
     this.seasonPanelHemisphere.textContent = seasonState.dominantHemisphere;
     this.seasonPanelSummary.textContent = seasonState.summary;
-
-    if (this.seasonOrbitInset) {
-      this.seasonOrbitInset.hidden = true;
-    }
   }
 
   showSeasonStatus(title, message) {
@@ -656,7 +856,7 @@ export class UI {
     this.seasonPanelTilt.textContent = "23.44°";
     this.seasonPanelHemisphere.textContent = "--";
     this.seasonPanelSummary.textContent =
-      "Mode này cần mô hình Sun-Earth riêng để minh hoạ quỹ đạo theo tháng.";
+      "Mode này cần mô hình Sun-Earth-Moon riêng để minh hoạ quỹ đạo theo timeline liên tục.";
 
     if (this.seasonOrbitInset) {
       this.seasonOrbitInset.hidden = true;
@@ -694,9 +894,9 @@ export class UI {
       "transform",
       `translate(${earthX.toFixed(2)} ${earthY.toFixed(2)})`,
     );
-    this.seasonOrbitCaption.textContent = `${seasonState.stateLabel ?? seasonState.eventLabel} | ${seasonState.dominantHemisphere}`;
+    this.seasonOrbitCaption.textContent = `${seasonState.stateLabel ?? seasonState.eventLabel} | ${seasonState.dateLabel}`;
     this.setSeasonEventActive(
-      seasonState.selectedEventKey ?? seasonState.eventKey,
+      seasonState.isExactSeasonEvent ? seasonState.nearestEventKey : null,
     );
   }
 

@@ -20,9 +20,11 @@ import { SeasonSystem } from "./SeasonSystem.js";
 import { CountryOverlay } from "./CountryOverlay.js";
 import { DEFAULT_SUN_PRESET, getSunPreset } from "./SunPresets.js";
 import { normalizeEarthTextureQualityPreset } from "./AdaptiveTexture.js";
+import { latLonToVector3, vector3ToLatLon } from "./GeoMath.js";
 
 const EARTH_RADIUS = 2;
 const DEFAULT_EARTH_VIEW_MODE = "globe";
+const COORDINATE_PROBE_RADIUS_OFFSET = 0.085;
 const EARTH_VIEW_MODES = new Set([
   "globe",
   "coordinates",
@@ -64,14 +66,17 @@ export class SceneManager {
     this.handleFirstUserAudioGesture = null;
     this.audioManager = null;
     this.seasonInitError = null;
+    this.seasonInitPromise = null;
     this.textureLoader = null;
     this.textureQualityPreset = "auto";
     this.isTextureQualityReloading = false;
+    this.coordinateSelection = null;
 
     this.earthViewMode = DEFAULT_EARTH_VIEW_MODE;
     this.desktopEarthViewModeBeforeVR = DEFAULT_EARTH_VIEW_MODE;
     this.explorerMonthIndex = 0;
-    this.selectedSeasonEventKey = null;
+    this.seasonTimelineDay = 0;
+    this.isSeasonSliderScrubbing = false;
     this.cameraViewStateBeforeSeason = null;
     this.wasTrackingISSBeforeSeason = false;
     this.globeLayerState = {
@@ -88,6 +93,8 @@ export class SceneManager {
     this.countryOverlay = new CountryOverlay(EARTH_RADIUS);
     this.climateExplorer = new ClimateExplorer(EARTH_RADIUS);
     this.seasonSystem = new SeasonSystem();
+    this.seasonTimelineDay = this.seasonSystem.getSeasonState().timelineDay;
+    this.coordinateProbeGroup = this.createCoordinateProbeMarker();
     this.starfield = new Starfield();
     this.sun = new Sun(1);
     this.moon = new Moon(0.5);
@@ -105,6 +112,9 @@ export class SceneManager {
     );
     this.interaction.setClimatePointerHandler(
       this.handleClimatePointer.bind(this),
+    );
+    this.interaction.setCoordinatePointerHandler(
+      this.handleCoordinatePointer.bind(this),
     );
     this.controls = new Controls(this.camera, this.renderer.domElement);
     this.webxr = new WebXRSetup(this.renderer);
@@ -193,21 +203,19 @@ export class SceneManager {
 
     this.ui.onClimateMonthChange = (monthIndex) => {
       this.explorerMonthIndex = Math.min(11, Math.max(0, monthIndex));
-      this.selectedSeasonEventKey = null;
       this.climateExplorer.setMonth(this.explorerMonthIndex);
-      this.seasonSystem.setMonth(this.explorerMonthIndex);
-      this.seasonSystem.setEvent(null);
       this.syncUiState();
       this.audioManager?.playUiPress("default");
     };
 
-    this.ui.onSeasonEventSelect = (eventKey) => {
-      const seasonState = this.seasonSystem.setEvent(eventKey);
-      this.selectedSeasonEventKey = eventKey;
-      this.explorerMonthIndex = seasonState.monthIndex;
-      this.climateExplorer.setMonth(this.explorerMonthIndex);
+    this.ui.onSeasonTimelineChange = (timelineDay) => {
+      this.seasonTimelineDay = timelineDay;
+      this.seasonSystem.setTimelineDay(timelineDay);
       this.syncUiState();
-      this.audioManager?.playUiPress("default");
+    };
+
+    this.ui.onExplorerSliderScrubChange = (isScrubbing) => {
+      this.isSeasonSliderScrubbing = this.isSeasonMode() ? isScrubbing : false;
     };
 
     this.ui.onSunPresetChange = (presetId) => {
@@ -285,13 +293,6 @@ export class SceneManager {
         this.sun.load(this.textureLoader, textureQuality),
       ]);
 
-    try {
-      await this.seasonSystem.init(this.textureLoader, textureQuality);
-    } catch (error) {
-      this.seasonInitError =
-        error instanceof Error ? error.message : String(error);
-    }
-
     const atmosphereMesh = this.atmosphere.create(this.camera);
     this.applySunPreset(this.currentSunPreset);
 
@@ -301,6 +302,7 @@ export class SceneManager {
     earthMesh.add(this.mapOverlay.group);
     earthMesh.add(this.countryOverlay.group);
     earthMesh.add(this.climateExplorer.group);
+    earthMesh.add(this.coordinateProbeGroup);
     this.scene.add(sunGroup);
     this.scene.add(moonGroup);
     this.scene.add(stars);
@@ -319,7 +321,7 @@ export class SceneManager {
 
     this.ui.setMonthLabels(this.climateExplorer.metadata.months);
     this.climateExplorer.setMonth(this.explorerMonthIndex);
-    this.seasonSystem.setMonth(this.explorerMonthIndex);
+    this.seasonSystem.setTimelineDay(this.seasonTimelineDay);
     this.climateInitPromise = this.climateExplorer
       .init(this.textureLoader)
       .then(() => {
@@ -346,6 +348,33 @@ export class SceneManager {
     this.syncUiState();
     this.ui.setSunPreset(this.currentSunPreset.id);
     this.ui.hideLoading();
+    this.initSeasonSystem(textureQuality);
+  }
+
+  initSeasonSystem(textureQuality) {
+    if (this.seasonInitPromise) {
+      return this.seasonInitPromise;
+    }
+
+    this.seasonInitError = null;
+    this.seasonInitPromise = this.seasonSystem
+      .init(this.textureLoader, textureQuality)
+      .then(() => {
+        this.seasonTimelineDay = this.seasonSystem.getSeasonState().timelineDay;
+        if (this.isSeasonMode()) {
+          this.enterSeasonScene();
+        }
+        this.syncUiState();
+        return this.seasonSystem;
+      })
+      .catch((error) => {
+        this.seasonInitError =
+          error instanceof Error ? error.message : String(error);
+        this.syncUiState();
+        return null;
+      });
+
+    return this.seasonInitPromise;
   }
 
   normalizeEarthViewMode(mode) {
@@ -367,6 +396,10 @@ export class SceneManager {
 
   isSeasonMode(mode = this.earthViewMode) {
     return mode === "seasons";
+  }
+
+  isCoordinatesMode(mode = this.earthViewMode) {
+    return mode === "coordinates";
   }
 
   isCountryOverlayAllowed(mode = this.earthViewMode) {
@@ -473,6 +506,64 @@ export class SceneManager {
     this.countryOverlay.setVisible(shouldShow);
   }
 
+  createCoordinateProbeMarker() {
+    const createSelectionMaterial = (color) =>
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.92,
+        depthWrite: false,
+      });
+
+    const group = new THREE.Group();
+    group.name = "coordinate-probe";
+    group.visible = false;
+    group.userData.baseScale = 1;
+
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.007, 0.007, 0.16, 12),
+      createSelectionMaterial(0xcde9ff),
+    );
+    stem.position.y = 0.08;
+
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(0.028, 18, 18),
+      createSelectionMaterial(0xfdf6c2),
+    );
+    core.position.y = 0.165;
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.06, 0.005, 12, 36),
+      createSelectionMaterial(0x7fd0ff),
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.165;
+
+    group.add(stem, core, ring);
+    return group;
+  }
+
+  setCoordinateProbe(lat, lon) {
+    const normal = latLonToVector3(lat, lon, 1).normalize();
+    this.coordinateProbeGroup.visible = true;
+    this.coordinateProbeGroup.position.copy(
+      latLonToVector3(
+        lat,
+        lon,
+        EARTH_RADIUS + COORDINATE_PROBE_RADIUS_OFFSET,
+      ),
+    );
+    this.coordinateProbeGroup.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      normal,
+    );
+  }
+
+  clearCoordinateProbe() {
+    this.coordinateProbeGroup.visible = false;
+    this.coordinateProbeGroup.scale.setScalar(1);
+  }
+
   setStarfieldDimmed(isDimmed) {
     const opacityFactor = isDimmed ? 0.32 : 1;
 
@@ -508,6 +599,8 @@ export class SceneManager {
   }
 
   enterSeasonScene() {
+    this.isSeasonSliderScrubbing = false;
+
     if (!this.cameraViewStateBeforeSeason) {
       this.cameraViewStateBeforeSeason = this.controls.saveViewState();
       this.wasTrackingISSBeforeSeason = this.controls.isTracking;
@@ -529,8 +622,7 @@ export class SceneManager {
       this.mapOverlay.setVisible(false);
       this.countryOverlay.setVisible(false);
       this.climateExplorer.setVisible(false);
-      this.seasonSystem.setMonth(this.explorerMonthIndex);
-      this.seasonSystem.setEvent(this.selectedSeasonEventKey);
+      this.seasonSystem.setTimelineDay(this.seasonTimelineDay);
       this.seasonSystem.setVisible(true);
       this.seasonSystem.applyCameraPreset(this.camera, this.controls);
     }
@@ -538,6 +630,7 @@ export class SceneManager {
 
   exitSeasonScene(nextMode) {
     this.seasonSystem.setVisible(false);
+    this.isSeasonSliderScrubbing = false;
     this.setPrimarySceneVisible(true);
     this.setStarfieldDimmed(false);
 
@@ -560,11 +653,17 @@ export class SceneManager {
     const nextMode = this.normalizeEarthViewMode(mode);
     const wasSeasonMode = this.isSeasonMode(this.earthViewMode);
     const willSeasonMode = this.isSeasonMode(nextMode);
+    const wasCoordinatesMode = this.isCoordinatesMode(this.earthViewMode);
 
     if (!wasSeasonMode && willSeasonMode) {
       this.enterSeasonScene();
     } else if (wasSeasonMode && !willSeasonMode) {
       this.exitSeasonScene(nextMode);
+    }
+
+    if (wasCoordinatesMode && !this.isCoordinatesMode(nextMode)) {
+      this.coordinateSelection = null;
+      this.clearCoordinateProbe();
     }
 
     this.earthViewMode = nextMode;
@@ -591,8 +690,7 @@ export class SceneManager {
       this.atmosphere.setVisible(false);
       this.markers.setVisible(false);
       if (this.seasonSystem.isReady) {
-        this.seasonSystem.setMonth(this.explorerMonthIndex);
-        this.seasonSystem.setEvent(this.selectedSeasonEventKey);
+        this.seasonSystem.setTimelineDay(this.seasonTimelineDay);
         this.seasonSystem.setVisible(true);
       } else {
         this.setPrimarySceneVisible(true);
@@ -659,6 +757,29 @@ export class SceneManager {
     );
   }
 
+  syncCoordinatePanel() {
+    if (!this.isCoordinatesMode() || this.webxr.isPresenting) {
+      this.clearCoordinateProbe();
+      this.ui.hideCoordinatePanel();
+      return;
+    }
+
+    if (this.coordinateSelection) {
+      this.setCoordinateProbe(
+        this.coordinateSelection.lat,
+        this.coordinateSelection.lon,
+      );
+      this.ui.showCoordinateProbe(this.coordinateSelection);
+      return;
+    }
+
+    this.clearCoordinateProbe();
+    this.ui.showCoordinateStatus(
+      "Mode tọa độ",
+      "Chọn một điểm bất kỳ trên bề mặt Trái Đất để xem tọa độ chi tiết.",
+    );
+  }
+
   syncSeasonPanel() {
     if (!this.isSeasonMode() || this.webxr.isPresenting) {
       this.ui.hideSeasonPanel();
@@ -676,17 +797,18 @@ export class SceneManager {
     if (!this.seasonSystem.isReady) {
       this.ui.showSeasonStatus(
         "Seasons Mode",
-        "Đang chuẩn bị mô hình Sun-Earth cho mô phỏng mùa vụ.",
+        "Đang chuẩn bị mô hình Sun-Earth-Moon cho mô phỏng mùa vụ.",
       );
       return;
     }
 
-    this.ui.showSeasonPanel(this.seasonSystem.getSeasonState());
+    const seasonState = this.seasonSystem.getSeasonState();
+    this.ui.showSeasonPanel(seasonState);
+    this.ui.updateSeasonOrbit(seasonState);
   }
 
   syncUiState() {
     this.ui.setMonthLabels(this.climateExplorer.metadata.months);
-    this.ui.setClimateMonth(this.explorerMonthIndex);
     this.ui.setEarthViewMode(this.earthViewMode);
     this.ui.setTextureQuality(this.textureQualityPreset);
     this.ui.setTextureQualityButtonsBusy(this.isTextureQualityReloading);
@@ -699,21 +821,37 @@ export class SceneManager {
       (this.isClimateMode() || this.isSeasonMode()) && !this.webxr.isPresenting,
     );
     this.ui.setExplorerMonthTitle(
-      this.isSeasonMode() ? "Tháng mô phỏng" : "Tháng dữ liệu",
+      this.isSeasonMode() ? "Ngày mô phỏng" : "Tháng dữ liệu",
     );
     this.ui.setClimateLegendVisible(this.isClimateMode());
-    this.ui.setSeasonEventControlsVisible(this.isSeasonMode());
-    this.ui.setSeasonEventActive(this.selectedSeasonEventKey);
     this.ui.setControlLocks({
       cloudsLocked: this.earthViewMode !== DEFAULT_EARTH_VIEW_MODE,
       atmosphereLocked: this.earthViewMode !== DEFAULT_EARTH_VIEW_MODE,
       markersLocked: this.isClimateMode() || this.isSeasonMode(),
       countriesLocked: this.isSeasonMode(),
     });
+    this.ui.setActionButtonVisibility({
+      issVisible: !this.isSeasonMode(),
+      muteVisible: true,
+      markersVisible: !this.isSeasonMode(),
+      countriesVisible: !this.isSeasonMode(),
+      cloudsVisible: !this.isSeasonMode(),
+      atmosphereVisible: !this.isSeasonMode(),
+    });
+
+    if (this.isSeasonMode()) {
+      const seasonState = this.seasonSystem.getSeasonState();
+      this.seasonTimelineDay = seasonState.timelineDay;
+      this.ui.setSeasonTimeline(seasonState.timelineDay, seasonState.dateLabel);
+    } else {
+      this.ui.setClimateMonth(this.explorerMonthIndex);
+      this.ui.setSeasonEventActive(null);
+    }
 
     if (this.isClimateMode()) {
       this.interaction.setDesktopMode("climate");
       this.syncClimatePanel();
+      this.ui.hideCoordinatePanel();
       this.ui.hideSeasonPanel();
       return;
     }
@@ -722,11 +860,19 @@ export class SceneManager {
 
     if (this.isSeasonMode()) {
       this.interaction.setDesktopMode("none");
+      this.ui.hideCoordinatePanel();
       this.syncSeasonPanel();
       return;
     }
 
     this.ui.hideSeasonPanel();
+    if (this.isCoordinatesMode()) {
+      this.interaction.setDesktopMode("coordinates");
+      this.syncCoordinatePanel();
+      return;
+    }
+
+    this.ui.hideCoordinatePanel();
     this.interaction.setDesktopMode(
       this.markers.isVisible ? "markers" : "none",
     );
@@ -746,6 +892,26 @@ export class SceneManager {
     }
     this.syncClimatePanel();
     return handled;
+  }
+
+  handleCoordinatePointer(raycaster) {
+    if (!this.isCoordinatesMode() || !this.earth.mesh) {
+      return false;
+    }
+
+    const earthHit = raycaster.intersectObject(this.earth.mesh, false)[0];
+    if (!earthHit) {
+      this.coordinateSelection = null;
+      this.syncCoordinatePanel();
+      return false;
+    }
+
+    const localPoint = this.earth.mesh.worldToLocal(earthHit.point.clone());
+    this.coordinateSelection = vector3ToLatLon(localPoint);
+    this.setCoordinateProbe(this.coordinateSelection.lat, this.coordinateSelection.lon);
+    this.audioManager?.playMarkerSelect();
+    this.syncCoordinatePanel();
+    return true;
   }
 
   setupLighting() {
@@ -836,8 +1002,32 @@ export class SceneManager {
     this.mapOverlay.update(activeCamera);
     this.countryOverlay.update(activeCamera);
     this.climateExplorer.update(activeCamera);
+    if (this.coordinateProbeGroup.visible) {
+      const pulse = 1 + Math.sin(performance.now() * 0.0042) * 0.08;
+      this.coordinateProbeGroup.scale.setScalar(pulse);
+    }
+
+    if (
+      this.isSeasonMode() &&
+      this.seasonSystem.isReady &&
+      !this.isSeasonSliderScrubbing
+    ) {
+      const seasonState = this.seasonSystem.advanceSimTime(delta, speed);
+      this.seasonTimelineDay = seasonState.timelineDay;
+    }
+
     this.seasonSystem.setSunlightMultiplier(this.ui.sunlightMultiplier);
     this.seasonSystem.update(delta, activeCamera);
+
+    if (this.isSeasonMode()) {
+      const seasonState = this.seasonSystem.getSeasonState();
+      this.seasonTimelineDay = seasonState.timelineDay;
+      if (!this.webxr.isPresenting) {
+        this.ui.setSeasonTimeline(seasonState.timelineDay, seasonState.dateLabel);
+      }
+      this.syncSeasonPanel();
+    }
+
     this.markers.update(timestamp, activeCamera);
     this.interaction.update();
     this.satellite.update(delta, speed);

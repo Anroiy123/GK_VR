@@ -204,7 +204,6 @@
       <div id="info-panel">
         <p class="info-kicker">Session</p>
         <p id="fps-counter">FPS: --</p>
-        <p id="sim-time">Thời gian: --</p>
         <p id="vr-status">VR: Chưa kết nối</p>
       </div>
 
@@ -262,70 +261,31 @@
         </div>
       </aside>
 
-      <aside id="season-orbit-inset" hidden>
-        <p class="climate-panel-kicker">Quỹ đạo mùa vụ</p>
-        <svg viewBox="0 0 280 280" aria-label="Minh hoạ quỹ đạo mùa vụ">
-          <circle class="season-orbit-path" cx="140" cy="140" r="96"></circle>
-          <circle class="season-sun" cx="140" cy="140" r="24"></circle>
-          <text class="season-orbit-label" x="140" y="34" text-anchor="middle">
-            Xuân phân
-          </text>
-          <text class="season-orbit-label" x="246" y="144" text-anchor="middle">
-            Đông chí
-          </text>
-          <text class="season-orbit-label" x="140" y="264" text-anchor="middle">
-            Thu phân
-          </text>
-          <text class="season-orbit-label" x="34" y="144" text-anchor="middle">
-            Hạ chí
-          </text>
-          <circle
-            class="season-orbit-node"
-            data-season-orbit-event="march-equinox"
-            cx="140"
-            cy="44"
-            r="6"
-          ></circle>
-          <circle
-            class="season-orbit-node"
-            data-season-orbit-event="june-solstice"
-            cx="44"
-            cy="140"
-            r="6"
-          ></circle>
-          <circle
-            class="season-orbit-node"
-            data-season-orbit-event="september-equinox"
-            cx="140"
-            cy="236"
-            r="6"
-          ></circle>
-          <circle
-            class="season-orbit-node"
-            data-season-orbit-event="december-solstice"
-            cx="236"
-            cy="140"
-            r="6"
-          ></circle>
-          <g id="season-orbit-earth" transform="translate(140 44)">
-            <circle
-              class="season-orbit-earth-core"
-              cx="0"
-              cy="0"
-              r="13"
-            ></circle>
-            <line
-              class="season-orbit-earth-axis"
-              x1="-6"
-              y1="18"
-              x2="6"
-              y2="-18"
-            ></line>
-          </g>
-        </svg>
-        <p id="season-orbit-caption" class="season-orbit-caption">
-          Xuân phân gần nhất | Gần cân bằng hai bán cầu
+      <aside id="coordinate-panel" hidden>
+        <p id="coordinate-panel-kicker" class="climate-panel-kicker">
+          Mode tọa độ
         </p>
+        <h3 id="coordinate-panel-title">Tọa độ điểm chọn</h3>
+        <p id="coordinate-panel-status">
+          Chọn một điểm bất kỳ trên bề mặt Trái Đất để xem kinh độ và vĩ độ.
+        </p>
+
+        <div id="coordinate-panel-sample" hidden>
+          <div class="climate-stat-grid">
+            <div class="climate-stat-card">
+              <span class="climate-stat-label">Vĩ độ</span>
+              <strong id="coordinate-probe-lat">--</strong>
+            </div>
+            <div class="climate-stat-card">
+              <span class="climate-stat-label">Kinh độ</span>
+              <strong id="coordinate-probe-lon">--</strong>
+            </div>
+          </div>
+          <p
+            id="coordinate-probe-summary"
+            class="climate-probe-interpretation"
+          ></p>
+        </div>
       </aside>
 
       <aside id="season-panel" hidden>
@@ -334,11 +294,76 @@
         </p>
         <h3 id="season-panel-title">Xuân phân</h3>
         <p id="season-panel-status">Hai bán cầu nhận bức xạ gần cân bằng.</p>
+        <div id="season-orbit-inset" hidden>
+          <p class="climate-panel-kicker">Quỹ đạo mùa vụ</p>
+          <svg viewBox="0 0 280 280" aria-label="Minh hoạ quỹ đạo mùa vụ">
+            <circle class="season-orbit-path" cx="140" cy="140" r="96"></circle>
+            <circle class="season-sun" cx="140" cy="140" r="24"></circle>
+            <text class="season-orbit-label" x="140" y="34" text-anchor="middle">
+              Xuân phân
+            </text>
+            <text class="season-orbit-label" x="246" y="144" text-anchor="middle">
+              Đông chí
+            </text>
+            <text class="season-orbit-label" x="140" y="264" text-anchor="middle">
+              Thu phân
+            </text>
+            <text class="season-orbit-label" x="34" y="144" text-anchor="middle">
+              Hạ chí
+            </text>
+            <circle
+              class="season-orbit-node"
+              data-season-orbit-event="march-equinox"
+              cx="140"
+              cy="44"
+              r="6"
+            ></circle>
+            <circle
+              class="season-orbit-node"
+              data-season-orbit-event="june-solstice"
+              cx="44"
+              cy="140"
+              r="6"
+            ></circle>
+            <circle
+              class="season-orbit-node"
+              data-season-orbit-event="september-equinox"
+              cx="140"
+              cy="236"
+              r="6"
+            ></circle>
+            <circle
+              class="season-orbit-node"
+              data-season-orbit-event="december-solstice"
+              cx="236"
+              cy="140"
+              r="6"
+            ></circle>
+            <g id="season-orbit-earth" transform="translate(140 44)">
+              <circle
+                class="season-orbit-earth-core"
+                cx="0"
+                cy="0"
+                r="13"
+              ></circle>
+              <line
+                class="season-orbit-earth-axis"
+                x1="-6"
+                y1="18"
+                x2="6"
+                y2="-18"
+              ></line>
+            </g>
+          </svg>
+          <p id="season-orbit-caption" class="season-orbit-caption">
+            Xuân phân gần nhất | Gần cân bằng hai bán cầu
+          </p>
+        </div>
 
         <div class="climate-stat-grid">
           <div class="climate-stat-card">
             <span class="climate-stat-label">Ngày mốc</span>
-            <strong id="season-panel-date">20/03/2026</strong>
+            <strong id="season-panel-date">20/03</strong>
           </div>
           <div class="climate-stat-card">
             <span class="climate-stat-label">Điểm subsolar</span>

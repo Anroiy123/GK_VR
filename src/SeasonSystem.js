@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { Earth } from "./Earth.js";
+import { Moon } from "./Moon.js";
 import { CelestialCalculator } from "./CelestialCalculator.js";
 
 const DEMO_YEAR = 2026;
 const EARTH_RADIUS = 2;
 const SEASON_SUN_RADIUS = 2.4;
-const EARTH_SCALE = 0.5; // Shrink Earth and its frame down so it's smaller than Sun
+const EARTH_SCALE = 0.5;
 const ORBIT_RADIUS = 8.2;
 const AXIS_TILT_DEG = 23.44;
 const AXIS_TILT_RAD = THREE.MathUtils.degToRad(AXIS_TILT_DEG);
@@ -14,14 +15,9 @@ const RING_SEGMENTS = 240;
 const POLAR_CIRCLE_LAT = 90 - AXIS_TILT_DEG;
 const CAMERA_POSITION = new THREE.Vector3(11.6, 5.2, 8.6);
 const CAMERA_TARGET = new THREE.Vector3(2.2, 0, 0);
-const SEASON_EVENT_DATES = {
-  "march-equinox": new Date(Date.UTC(DEMO_YEAR, 2, 20, 12, 0, 0)),
-  "june-solstice": new Date(Date.UTC(DEMO_YEAR, 5, 21, 12, 0, 0)),
-  "september-equinox": new Date(Date.UTC(DEMO_YEAR, 8, 22, 12, 0, 0)),
-  "december-solstice": new Date(Date.UTC(DEMO_YEAR, 11, 21, 12, 0, 0)),
-};
 const SEASON_SUN_TEXTURE_PATH = "NewTextures/8k_sun.jpg";
 const SEASON_SUN_GLOW_COLOR = new THREE.Color(0xffd68a);
+const SEASON_MOON_DISTANCE = 2.4;
 
 async function loadSeasonSunTexture(textureLoader, maxAnisotropy = 1) {
   const texture = await textureLoader.loadAsync(SEASON_SUN_TEXTURE_PATH);
@@ -93,18 +89,6 @@ function createGlowSprite(texture, scale, opacity) {
   sprite.scale.set(scale, scale, 1);
   sprite.renderOrder = 6;
   return sprite;
-}
-
-function getRepresentativeDate(monthIndex) {
-  return new Date(Date.UTC(DEMO_YEAR, monthIndex, 15, 12, 0, 0));
-}
-
-function getSeasonDate(monthIndex, eventKey) {
-  if (eventKey && SEASON_EVENT_DATES[eventKey]) {
-    return new Date(SEASON_EVENT_DATES[eventKey].getTime());
-  }
-
-  return getRepresentativeDate(monthIndex);
 }
 
 function createOrbitRing(radius) {
@@ -216,6 +200,7 @@ export class SeasonSystem {
     this.root.visible = false;
 
     this.earth = new Earth();
+    this.moon = new Moon(0.5);
     this.sunGroup = new THREE.Group();
     this.sunMesh = null;
     this.sunTexture = null;
@@ -225,11 +210,11 @@ export class SeasonSystem {
     this.sunOuterGlowTexture = null;
     this.isReady = false;
     this.isVisible = false;
-    this.activeMonthIndex = 0;
-    this.activeEventKey = null;
-    this.seasonState = CelestialCalculator.getSeasonState(
-      getRepresentativeDate(this.activeMonthIndex),
+    this.timelineDayFloat = 0;
+    this.currentDateUtc = CelestialCalculator.getDateFromTimelineDay(
+      this.timelineDayFloat,
     );
+    this.seasonState = CelestialCalculator.getSeasonState(this.currentDateUtc);
     this.sunlightMultiplier = 1.0;
 
     this.orbitRing = createOrbitRing(ORBIT_RADIUS);
@@ -243,6 +228,7 @@ export class SeasonSystem {
     this.earthWorldPosition = new THREE.Vector3();
     this.sunWorldPosition = new THREE.Vector3();
     this.sunWorldDirection = new THREE.Vector3();
+    this.moonWorldPosition = new THREE.Vector3();
     this.earthFrameQuaternion = new THREE.Quaternion();
     this.localSunDirection = new THREE.Vector3();
 
@@ -299,11 +285,16 @@ export class SeasonSystem {
     this.earthFrame.add(this.annotationGroup);
   }
 
+  getMoonWorldRadius() {
+    return this.moon.radius * this.earthGroup.scale.x;
+  }
+
   async init(textureLoader, textureQuality) {
     const maxAnisotropy = textureQuality?.maxAnisotropy ?? 1;
-    const [earthMesh, sunTexture] = await Promise.all([
+    const [earthMesh, sunTexture, moonGroup] = await Promise.all([
       this.earth.load(textureLoader, textureQuality),
       loadSeasonSunTexture(textureLoader, maxAnisotropy),
+      this.moon.load(textureLoader),
     ]);
 
     const sunGeometry = new THREE.SphereGeometry(SEASON_SUN_RADIUS, 64, 64);
@@ -345,6 +336,9 @@ export class SeasonSystem {
     earthMesh.rotation.x = 0;
     earthMesh.rotation.y = 0;
     this.earthFrame.add(earthMesh);
+    this.earthGroup.add(moonGroup);
+    this.earth.setMoonRadius(this.getMoonWorldRadius());
+    this.earth.setEclipseEnabled(true);
 
     this.isReady = true;
     this.refreshState();
@@ -356,19 +350,46 @@ export class SeasonSystem {
     this.root.visible = isVisible && this.isReady;
   }
 
-  setMonth(monthIndex) {
-    this.activeMonthIndex = Math.min(11, Math.max(0, monthIndex));
-    if (!this.activeEventKey) {
-      this.refreshState();
-    }
+  setDate(date) {
+    const safeDate =
+      date instanceof Date && Number.isFinite(date.getTime())
+        ? new Date(date.getTime())
+        : CelestialCalculator.getDateFromTimelineDay(this.timelineDayFloat);
+    this.timelineDayFloat = CelestialCalculator.getTimelineDay(safeDate);
+    this.currentDateUtc = CelestialCalculator.getDateFromTimelineDay(
+      this.timelineDayFloat,
+    );
+    this.refreshState();
     return this.getSeasonState();
   }
 
-  setEvent(eventKey = null) {
-    this.activeEventKey = eventKey;
+  setTimelineDay(timelineDay = 0) {
+    this.timelineDayFloat = CelestialCalculator.normalizeTimelineDay(timelineDay);
+    this.currentDateUtc = CelestialCalculator.getDateFromTimelineDay(
+      this.timelineDayFloat,
+    );
     this.refreshState();
-    this.activeMonthIndex = this.seasonState.monthIndex;
     return this.getSeasonState();
+  }
+
+  advanceSimTime(deltaSeconds, speedMultiplier = 1) {
+    const safeDeltaSeconds = Math.max(0, deltaSeconds);
+    const safeSpeedMultiplier = Math.max(0, speedMultiplier);
+    const deltaDays = (safeDeltaSeconds * safeSpeedMultiplier) / 24;
+    return this.setTimelineDay(this.timelineDayFloat + deltaDays);
+  }
+
+  setMonth(monthIndex) {
+    const safeMonthIndex = Math.min(
+      11,
+      Math.max(0, Math.round(Number.isFinite(monthIndex) ? monthIndex : 0)),
+    );
+    return this.setDate(new Date(Date.UTC(DEMO_YEAR, safeMonthIndex, 15, 12, 0, 0)));
+  }
+
+  setEvent(eventKey = null) {
+    const eventDate = CelestialCalculator.getSeasonEventDate(eventKey);
+    return eventDate ? this.setDate(eventDate) : this.getSeasonState();
   }
 
   applyCameraPreset(camera, controls) {
@@ -386,13 +407,24 @@ export class SeasonSystem {
   }
 
   refreshState() {
-    const date = getSeasonDate(this.activeMonthIndex, this.activeEventKey);
-    this.seasonState = CelestialCalculator.getSeasonState(date);
+    const seasonState = CelestialCalculator.getSeasonState(this.currentDateUtc);
+    const jd = CelestialCalculator.getJulianDate(this.currentDateUtc);
+
+    this.seasonState = {
+      ...seasonState,
+      earthRotationAngleRad: CelestialCalculator.getEarthRotationAngle(jd),
+    };
+
     this.earthOrbitPivot.rotation.y = THREE.MathUtils.degToRad(
       this.seasonState.orbitAngleDeg,
     );
     this.earthGroup.rotation.y = -this.earthOrbitPivot.rotation.y;
+    this.earth.updateRotation(this.seasonState.earthRotationAngleRad);
+    this.moon.group.position.copy(
+      CelestialCalculator.getMoonPosition(jd, SEASON_MOON_DISTANCE),
+    );
     this.updateSubsolarMarker();
+    this.alignMoonToEarth();
   }
 
   updateSubsolarMarker() {
@@ -400,6 +432,7 @@ export class SeasonSystem {
       return;
     }
 
+    this.root.updateMatrixWorld(true);
     this.earthAnchor.getWorldPosition(this.earthWorldPosition);
     this.sunGroup.getWorldPosition(this.sunWorldPosition);
     this.sunWorldDirection
@@ -423,6 +456,16 @@ export class SeasonSystem {
     );
   }
 
+  alignMoonToEarth() {
+    if (!this.moon.mesh) {
+      return;
+    }
+
+    this.earthAnchor.getWorldPosition(this.earthWorldPosition);
+    this.moon.mesh.lookAt(this.earthWorldPosition);
+    this.moon.mesh.rotateY(Math.PI / 2);
+  }
+
   getSeasonState() {
     const latitudeValue = this.seasonState.subsolarLatitudeDeg;
     const latitudeSuffix =
@@ -431,8 +474,8 @@ export class SeasonSystem {
     return {
       ...this.seasonState,
       monthLabel: `Tháng ${this.seasonState.monthIndex + 1}`,
+      timelineDay: this.timelineDayFloat,
       subsolarLatitudeLabel: `${Math.abs(latitudeValue).toFixed(1)}°${latitudeSuffix}`,
-      selectedEventKey: this.activeEventKey,
     };
   }
 
@@ -458,14 +501,17 @@ export class SeasonSystem {
     }
 
     this.updateSubsolarMarker();
-
+    this.alignMoonToEarth();
     this.earthAnchor.getWorldPosition(this.earthWorldPosition);
     this.sunWorldDirection
       .subVectors(this.sunWorldPosition, this.earthWorldPosition)
       .normalize();
 
     this.earth.setSunDirection(this.sunWorldDirection);
-    this.earth.setMoonPosition(new THREE.Vector3(0, 0, 0));
+    this.moon.group.getWorldPosition(this.moonWorldPosition);
+    this.earth.setMoonPosition(this.moonWorldPosition);
+    this.earth.setMoonRadius(this.getMoonWorldRadius());
+    this.earth.setEclipseEnabled(true);
     this.earth.setCameraDistance(
       this.cameraWorldPosition.distanceTo(this.earthWorldPosition),
     );
@@ -480,6 +526,7 @@ export class SeasonSystem {
 
   dispose() {
     this.earth.dispose();
+    this.moon.dispose();
     this.sunMesh?.geometry?.dispose?.();
     this.sunMesh?.material?.dispose?.();
     this.sunTexture?.dispose?.();

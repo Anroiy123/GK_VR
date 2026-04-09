@@ -44,6 +44,12 @@ body {
   animation: spin 1s linear infinite;
 }
 
+.loader.error {
+  animation: none;
+  opacity: 0.45;
+  border-top-color: rgba(255, 160, 160, 0.55);
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -55,6 +61,10 @@ body {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
   letter-spacing: 1px;
+}
+
+#loading-screen.error p {
+  color: rgba(255, 188, 188, 0.92);
 }
 
 /* UI Overlay */
@@ -125,8 +135,7 @@ body {
   gap: 8px;
 }
 
-#climate-controls[hidden],
-#season-event-controls[hidden] {
+#climate-controls[hidden] {
   display: none;
 }
 
@@ -181,8 +190,7 @@ body {
 }
 
 .earth-view-btn,
-.texture-quality-btn,
-.season-event-btn {
+.texture-quality-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.8);
@@ -200,8 +208,7 @@ body {
 }
 
 .earth-view-btn:hover,
-.texture-quality-btn:hover,
-.season-event-btn:hover {
+.texture-quality-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(100, 180, 255, 0.35);
 }
@@ -209,9 +216,7 @@ body {
 .earth-view-btn.active,
 .earth-view-btn[aria-pressed="true"],
 .texture-quality-btn.active,
-.texture-quality-btn[aria-pressed="true"],
-.season-event-btn.active,
-.season-event-btn[aria-pressed="true"] {
+.texture-quality-btn[aria-pressed="true"] {
   background: linear-gradient(
     180deg,
     rgba(116, 188, 255, 0.28),
@@ -279,6 +284,14 @@ body {
   gap: 8px;
 }
 
+.action-grid.action-grid--single {
+  grid-template-columns: 1fr;
+}
+
+.action-grid > button[hidden] {
+  display: none;
+}
+
 #controls-toggle:hover,
 #iss-toggle:hover,
 #mute-btn:hover,
@@ -325,19 +338,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-#season-event-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.season-event-title {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(159, 208, 255, 0.7);
 }
 
 #climate-legend-title {
@@ -387,7 +387,8 @@ body {
   line-height: 1.8;
 }
 
-#climate-panel {
+#climate-panel,
+#coordinate-panel {
   position: fixed;
   top: 124px;
   right: 16px;
@@ -406,16 +407,16 @@ body {
   scrollbar-width: none;
 }
 
-#climate-panel::-webkit-scrollbar {
+#climate-panel::-webkit-scrollbar,
+#coordinate-panel::-webkit-scrollbar {
   display: none;
 }
 
-#season-orbit-inset,
 #season-panel {
   position: fixed;
   right: 16px;
   z-index: 18;
-  width: min(280px, calc(100vw - 24px));
+  width: min(320px, calc(100vw - 24px));
   padding: 12px;
   background: rgba(4, 9, 21, 0.88);
   backdrop-filter: blur(14px);
@@ -425,13 +426,9 @@ body {
   pointer-events: auto;
 }
 
-#season-orbit-inset {
-  top: 124px;
-}
-
 #season-orbit-inset svg {
   display: block;
-  width: 130px;
+  width: min(100%, 220px);
   height: auto;
   margin: 4px auto 0;
 }
@@ -484,11 +481,23 @@ body {
 }
 
 #season-panel {
-  top: 310px;
-  max-height: calc(100vh - 326px);
+  top: 124px;
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none; /* Firefox */
+}
+
+#season-orbit-inset {
+  margin: 14px 0;
+  padding: 10px 12px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+#season-orbit-inset .climate-panel-kicker {
+  margin-bottom: 6px;
 }
 
 #season-panel::-webkit-scrollbar {
@@ -504,6 +513,7 @@ body {
 }
 
 #climate-panel-title,
+#coordinate-panel-title,
 #season-panel-title {
   font-size: 20px;
   line-height: 1.1;
@@ -511,13 +521,15 @@ body {
 }
 
 #climate-panel-status,
+#coordinate-panel-status,
 #season-panel-status {
   font-size: 12px;
   line-height: 1.4;
   color: rgba(255, 255, 255, 0.76);
 }
 
-#climate-panel-sample {
+#climate-panel-sample,
+#coordinate-panel-sample {
   margin-top: 14px;
 }
 
@@ -644,20 +656,21 @@ body {
 
 @media (max-width: 1120px) {
   #climate-panel,
-  #season-panel,
-  #season-orbit-inset {
+  #coordinate-panel,
+  #season-panel {
     top: auto;
     right: 16px;
     width: min(360px, calc(100vw - 24px));
   }
 
   #season-panel,
-  #climate-panel {
+  #climate-panel,
+  #coordinate-panel {
     bottom: 16px;
   }
 
-  #season-orbit-inset {
-    bottom: 306px;
+  #season-panel {
+    max-height: calc(100vh - 32px);
   }
 }
 
@@ -676,14 +689,15 @@ body {
 
   #location-popup,
   #climate-panel,
-  #season-panel,
-  #season-orbit-inset {
+  #coordinate-panel,
+  #season-panel {
     width: min(320px, calc(100vw - 20px));
     padding: 12px;
   }
 
   #location-popup-title,
   #climate-panel-title,
+  #coordinate-panel-title,
   #season-panel-title {
     font-size: 20px;
   }
@@ -703,6 +717,7 @@ body.vr-active #help-panel,
 body.vr-active #controls-panel,
 body.vr-active #info-panel,
 body.vr-active #climate-panel,
+body.vr-active #coordinate-panel,
 body.vr-active #season-panel,
 body.vr-active #season-orbit-inset {
   display: none;
