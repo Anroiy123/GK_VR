@@ -70,6 +70,12 @@ function getSurfaceIntensity(multiplier, surfaceConfig) {
   );
 }
 
+function getSurfaceTextureBlend(surfaceConfig, isVRMode = false) {
+  const textureBlend = surfaceConfig.textureBlend ?? 0;
+
+  return isVRMode ? Math.min(textureBlend, 0.18) : textureBlend;
+}
+
 function setSpriteScaleAndOpacity(sprite, scale, opacity) {
   if (!sprite) return;
   sprite.scale.setScalar(scale);
@@ -602,7 +608,10 @@ export class Sun {
     material.uniforms.rimPower.value = sunConfig.surface.rimPower;
     material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
     material.uniforms.sunMap.value = this.surfaceTexture;
-    material.uniforms.textureBlend.value = sunConfig.surface.textureBlend ?? 0;
+    material.uniforms.textureBlend.value = getSurfaceTextureBlend(
+      sunConfig.surface,
+      this.isVRMode,
+    );
     material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
       sunConfig.surface,
@@ -643,8 +652,8 @@ export class Sun {
       rimStrength: 0.5,
       radialPower: 3.4,
       rimPower: 2.2,
-      coreColor: 0xffefcc,
-      rimColor: 0xffb86a,
+      coreColor: 0xfffbef,
+      rimColor: 0xfff2b6,
       renderOrder: 6,
     });
     this.group.add(this.coronaShell);
@@ -690,8 +699,8 @@ export class Sun {
       rimStrength: 0.92,
       radialPower: 4.8,
       rimPower: 2.5,
-      coreColor: 0xffde9a,
-      rimColor: 0xff8f42,
+      coreColor: 0xfff7db,
+      rimColor: 0xffffc2,
       renderOrder: 5,
     });
     this.group.add(this.hazeShell);
@@ -728,8 +737,10 @@ export class Sun {
     this.mesh.material.uniforms.coreBoost.value = sunConfig.surface.coreBoost;
     this.mesh.material.uniforms.rimPower.value = sunConfig.surface.rimPower;
     this.mesh.material.uniforms.noiseScale.value = sunConfig.surface.noiseScale;
-    this.mesh.material.uniforms.textureBlend.value =
-      sunConfig.surface.textureBlend ?? 0;
+    this.mesh.material.uniforms.textureBlend.value = getSurfaceTextureBlend(
+      sunConfig.surface,
+      this.isVRMode,
+    );
     this.mesh.material.uniforms.intensity.value = getSurfaceIntensity(
       this.sunlightMultiplier,
       sunConfig.surface,
@@ -773,15 +784,15 @@ export class Sun {
           sunConfig.glow.coronaOpacityBase,
           sunConfig.glow.coronaOpacityBoost,
           glowStrength,
-        ) * (this.isVRMode ? 0.58 : 0.34),
+        ) * (this.isVRMode ? 0.52 : 0.34),
         0,
         0.52,
       ),
     );
     setShellStrength(
       this.coronaShell,
-      this.isVRMode ? 0.38 : 0.26,
-      this.isVRMode ? 0.52 : 0.42,
+      this.isVRMode ? 0.44 : 0.26,
+      this.isVRMode ? 0.4 : 0.42,
     );
     setSpriteScaleAndOpacity(
       this.rays,
@@ -848,15 +859,15 @@ export class Sun {
           sunConfig.glow.outerOpacityBase,
           sunConfig.glow.outerOpacityBoost,
           glowStrength,
-        ) * (this.isVRMode ? 1.25 : 0.72),
+        ) * (this.isVRMode ? 0.96 : 0.72),
         0,
         0.18,
       ),
     );
     setShellStrength(
       this.hazeShell,
-      this.isVRMode ? 0.12 : 0.08,
-      this.isVRMode ? 1.08 : 0.9,
+      this.isVRMode ? 0.18 : 0.08,
+      this.isVRMode ? 0.74 : 0.9,
     );
 
     this.syncRenderMode();
@@ -1017,7 +1028,7 @@ export class Sun {
           sunConfig.glow.coronaOpacityBoost,
           glowStrength,
         ) *
-          (this.isVRMode ? 0.6 : 0.34) +
+          (this.isVRMode ? 0.52 : 0.34) +
           Math.sin(this.elapsedTime * 0.72 + 0.3) * 0.01,
         0,
         0.52,
@@ -1082,7 +1093,7 @@ export class Sun {
           sunConfig.glow.outerOpacityBoost,
           glowStrength,
         ) *
-          (this.isVRMode ? 1.22 : 0.72) +
+          (this.isVRMode ? 0.96 : 0.72) +
           Math.sin(this.elapsedTime * 0.48 + 1.4) * 0.006,
         0,
         0.18,

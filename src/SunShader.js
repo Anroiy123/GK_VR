@@ -85,9 +85,9 @@ export const SunShader = {
       float edgeRim = pow(clamp(1.0 - abs(vNormal.z), 0.0, 1.0), rimPower) * 0.35;
       float brightness = (core * 1.12 + surfacePulse * 0.48 + edgeRim) * intensity;
 
-      vec3 deepGold = vec3(1.0, 0.55, 0.15);
-      vec3 hotGold = vec3(1.0, 0.86, 0.45);
-      vec3 whiteHot = vec3(1.0, 0.98, 0.9);
+      vec3 deepGold = vec3(1.0, 0.68, 0.22);
+      vec3 hotGold = vec3(1.0, 0.9, 0.56);
+      vec3 whiteHot = vec3(1.0, 0.99, 0.94);
 
       vec3 plasmaColor = mix(deepGold, hotGold, clamp(surfacePulse, 0.0, 1.0));
       vec2 textureUv = fract(vUv + vec2(
@@ -96,12 +96,11 @@ export const SunShader = {
       ));
       vec3 textureColor = texture2D(sunMap, textureUv).rgb;
       float textureLuma = dot(textureColor, vec3(0.2126, 0.7152, 0.0722));
-      vec3 warmedTexture = mix(
-        textureColor * vec3(1.25, 1.0, 0.72),
-        vec3(textureLuma) * vec3(1.2, 0.96, 0.7),
-        0.3
-      );
-      plasmaColor = mix(plasmaColor, warmedTexture, clamp(textureBlend, 0.0, 1.0));
+      float textureHighlight = smoothstep(0.42, 0.95, textureLuma);
+      vec3 textureAccent = mix(hotGold, whiteHot, textureHighlight);
+      float safeTextureBlend = clamp(textureBlend, 0.0, 1.0) * textureHighlight;
+      plasmaColor = mix(plasmaColor, textureAccent, safeTextureBlend * 0.72);
+      brightness *= 1.0 + safeTextureBlend * 0.12;
       vec3 coreColor = mix(plasmaColor, whiteHot, clamp(core * 0.95, 0.0, 1.0));
       vec3 color = coreColor * brightness;
       vec3 premultipliedColor = clamp(color, 0.0, 2.5) * discMask;
