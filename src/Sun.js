@@ -73,7 +73,7 @@ function getSurfaceIntensity(multiplier, surfaceConfig) {
 function getSurfaceTextureBlend(surfaceConfig, isVRMode = false) {
   const textureBlend = surfaceConfig.textureBlend ?? 0;
 
-  return isVRMode ? Math.min(textureBlend, 0.18) : textureBlend;
+  return isVRMode ? 0 : textureBlend;
 }
 
 function setSpriteScaleAndOpacity(sprite, scale, opacity) {

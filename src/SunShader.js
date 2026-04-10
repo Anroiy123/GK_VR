@@ -67,22 +67,29 @@ export const SunShader = {
     }
 
     void main() {
-      vec2 centeredUv = vUv - 0.5;
+      vec3 surfaceNormal = normalize(vNormal);
+
+      if (surfaceNormal.z <= 0.0) {
+        discard;
+      }
+
+      vec2 discUv = surfaceNormal.xy * 0.5 + 0.5;
+      vec2 centeredUv = discUv - 0.5;
       float radius = length(centeredUv) * 2.0;
-      float discMask = smoothstep(1.01, 0.9, radius);
-      float core = pow(max(1.0 - radius, 0.0), 0.42) * coreBoost;
+      float discMask = smoothstep(1.02, 0.94, radius);
+      float core = pow(max(surfaceNormal.z, 0.0), 0.52) * coreBoost;
 
       if (discMask <= 0.001) {
         discard;
       }
 
-      vec2 flowUv = vec2(vUv.x * 1.65, vUv.y * 0.95);
+      vec2 flowUv = vec2(discUv.x * 1.65, discUv.y * 0.95);
       float plasma = fbm(flowUv * noiseScale + vec2(time * 0.35, -time * 0.18));
       float swirl = fbm(flowUv * (noiseScale * 1.8) + vec2(-time * 0.9, time * 0.42));
       float turbulence = mix(plasma, swirl, 0.42);
 
       float surfacePulse = 0.85 + turbulence * 0.45;
-      float edgeRim = pow(clamp(1.0 - abs(vNormal.z), 0.0, 1.0), rimPower) * 0.35;
+      float edgeRim = pow(clamp(1.0 - surfaceNormal.z, 0.0, 1.0), rimPower) * 0.22;
       float brightness = (core * 1.12 + surfacePulse * 0.48 + edgeRim) * intensity;
 
       vec3 deepGold = vec3(1.0, 0.68, 0.22);
@@ -90,7 +97,7 @@ export const SunShader = {
       vec3 whiteHot = vec3(1.0, 0.99, 0.94);
 
       vec3 plasmaColor = mix(deepGold, hotGold, clamp(surfacePulse, 0.0, 1.0));
-      vec2 textureUv = fract(vUv + vec2(
+      vec2 textureUv = fract(discUv + vec2(
         (swirl - 0.5) * 0.02,
         (plasma - 0.5) * 0.014
       ));
